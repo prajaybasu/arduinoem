@@ -1,0 +1,105 @@
+﻿<Page xmlns:Charts="using:Syncfusion.UI.Xaml.Charts" 
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ArduinoEMClient"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:Gauges="using:Syncfusion.UI.Xaml.Gauges"
+    x:Class="ArduinoEMClient.HomePage"
+    mc:Ignorable="d">
+
+    <StackPanel>
+        <RelativePanel>
+         <TextBlock Name="headerText" Text="ArduinoEMClient" Style="{StaticResource TitleTextBlockStyle}" Margin="12,0,0,0"/>
+            <Button Click="ButtonRefresh_Click" x:Name="ButtonRefresh" RelativePanel.AlignVerticalCenterWith="headerText" Margin="10,5,0,0" RelativePanel.RightOf="headerText">
+                <Button.Content>
+                    <SymbolIcon Symbol="Refresh"/>
+                </Button.Content>
+            </Button>
+        </RelativePanel>
+        <Pivot Grid.Row="1">
+            <PivotItem Header="Overview">
+                <RelativePanel>
+                    <TextBlock Margin="10"  Name="currentTemperature" Text="Latest Temperature"/>
+                    <TextBlock Margin="10" Name="currentPressure" Text="Latest Pressure" RelativePanel.Below="currentTemperature"/>
+                    <TextBlock Margin="10" Name="currentHumidity" RelativePanel.Below="currentPressure" Text="Latest Humidity"/>
+                    
+                </RelativePanel>
+            </PivotItem>
+                    <PivotItem Header="Temperature">
+                        <ScrollViewer Height="700" VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Hidden">
+                            <StackPanel Name="temperaturePanel" Height="800">
+                        <RelativePanel HorizontalAlignment="Center" Margin="10,0,0,5">
+                            <Gauges:SfLinearGauge Name="temperatureGauge">
+                                <Gauges:SfLinearGauge.MainScale>
+                                    <Gauges:LinearScale 
+                                        Name="mainScale" 
+                                        Interval="5" 
+                                        Minimum="-20" 
+                                        Maximum="50"  
+                                        MinorTicksPerInterval="4"
+                                        MajorTickSize="15"
+                                        MinorTickSize="7.5"
+                                        MajorTickStrokeThickness="2" 
+                                        MinorTickStrokeThickness="1">
+                                        <Gauges:LinearScale.Pointers>
+                                            <Gauges:LinearPointer Name="temperaturePointer"/>
+                                        </Gauges:LinearScale.Pointers>
+                                    </Gauges:LinearScale>
+                                </Gauges:SfLinearGauge.MainScale>
+                            </Gauges:SfLinearGauge>
+                            <TextBlock Margin="20" Text="Loading" Style="{StaticResource TitleTextBlockStyle}" RelativePanel.RightOf="temperatureGauge" RelativePanel.AlignVerticalCenterWithPanel="True" Name="temperatureText"/>
+                        </RelativePanel>
+                        <RelativePanel Margin="10,0,0,5">
+
+                                    <ComboBox  x:Name="dataInterval" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="Last Day" IsSelected="True"/>
+                                        <ComboBoxItem Content="Last Week"/>
+                                        <ComboBoxItem Content="Last Month"/>
+                                        <ComboBoxItem Content="Last Year" IsEnabled="False" />
+                                    </ComboBox>
+
+                                    <ComboBox PlaceholderText="Select Temperature" Margin="10,0,0,0" RelativePanel.RightOf="dataInterval" x:Name="temperatureSelect" HorizontalAlignment="Center">
+
+                                        <CheckBox Content="Average"/>
+                                        <CheckBox Content="Maximum"/>
+                                        <CheckBox Content="Minimum"/>
+                                    </ComboBox>
+                                </RelativePanel>
+
+                        <Charts:SfChart Margin="10" Name="temperatureChart">
+
+
+                            <Charts:SfChart.PrimaryAxis>
+
+                                <Charts:DateTimeAxis Interval="5" LabelFormat="dd" IntervalType="Minutes"/>
+
+                            </Charts:SfChart.PrimaryAxis>
+
+
+
+                            <Charts:SfChart.SecondaryAxis>
+
+                                <Charts:NumericalAxis />
+
+                            </Charts:SfChart.SecondaryAxis>
+
+
+
+                            <Charts:LineSeries x:Name="temperatureSeries" Label="Temperature Graph"   XBindingPath="createdAt" YBindingPath="temperature"  ItemsSource="{Binding data}">
+
+                            </Charts:LineSeries>
+                        </Charts:SfChart>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </PivotItem>
+            <PivotItem Header="Humidity">
+            </PivotItem>
+            <PivotItem Header="Pressure">
+            </PivotItem>
+            <PivotItem Header="Air Data">
+            </PivotItem>
+                </Pivot>
+                <!-- TODO - This is the main starting UI for your app -->
+    </StackPanel>
+</Page>

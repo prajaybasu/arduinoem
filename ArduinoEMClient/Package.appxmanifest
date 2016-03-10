@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
+  <Identity Name="6bca7903-58cf-447b-aa08-e4f39117ee23" Publisher="CN=Prajay" Version="1.0.2.0" />
+  <mp:PhoneIdentity PhoneProductId="6bca7903-58cf-447b-aa08-e4f39117ee23" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Properties>
+    <DisplayName>ArduinoEMClient</DisplayName>
+    <PublisherDisplayName>Prajay Basu</PublisherDisplayName>
+    <Logo>Assets/StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.0.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="ArduinoEMClient.App">
+      <uap:VisualElements DisplayName="Arduino Environmental Monitoring" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="Arduino Environmental Monitoring client for Universal Windows Platform." BackgroundColor="darkCyan">
+        <uap:DefaultTile Square310x310Logo="Assets\Logo-TileLargeMedium.png" Wide310x150Logo="Assets\Logo-TileWide310x150.png" Square71x71Logo="Assets\Logo-TileSmall.png">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+            <uap:ShowOn Tile="square310x310Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+        <uap:SplashScreen Image="Assets/SplashScreen.png" BackgroundColor="darkCyan" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <Capability Name="privateNetworkClientServer" />
+    <DeviceCapability Name="bluetooth" />
+  </Capabilities>
+</Package>
