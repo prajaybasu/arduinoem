@@ -1,9 +1,10 @@
 /*
- Name:		ArduinoEM_final.ino
- Created:	18-Mar-16 21:03:52
+ Name:		ArduinoEM.ino
+ Created:	18-Mar-16 21:16:40
  Author:	Prajay
 */
 
+// the setup function runs once when you press reset or power the board
 #include <ArduinoJson.h>
 #include <Si7021.h>
 #include <TSL2561.h>

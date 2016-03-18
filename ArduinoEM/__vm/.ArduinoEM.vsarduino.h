@@ -62,5 +62,5 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portOutputRegister(P)
 #define portInputRegister(P)
 #define portModeRegister(P)
-#include <..\ArduinoEM_final\ArduinoEM_final.ino>
+#include <..\ArduinoEM\ArduinoEM.ino>
 #endif
