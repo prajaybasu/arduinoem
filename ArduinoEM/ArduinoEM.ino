@@ -42,12 +42,20 @@
 #define SHARP_DELAY1   40     //40 us (microseconds) from GP2Y1010AU0F datasheet\
 #define BAUD_BLUETOOTH 250000 // the module can go max upto 1382400, arduino safely upto 200-220k
 #define BAUD_USB       250000 // at 115200 you can send 512 bytes at 225.0 Hz, which is good enough since we also need to plug all of that in to graphs and stuff
+#define TIMEOUT        30000 // Wifi/http timeout
 //Variables which get loaded from eeprom on startup
+// First address of EEPROM to write to.
+// marks the end of the data we wrote to EEPROM
 const char table_name[] = "WeatherDataItem"; // storing these in EEPROM is not viable
-const char server[] = "";  // too long, might try concat on load, but that'll defeat its purpose
-char ssid[] = "";
-char password[] = "";
+const char server[] = "arduinoem.azurewebsites.net";  // too long, might try concat on load, but that'll defeat its purpose
+const int START_ADDRESS = 0;
+const byte EEPROM_END_MARK = 0;
+//#define      WLAN_SEC_UNSEC (0)
+//#define      WLAN_SEC_WEP  (1)
+//#define      WLAN_SEC_WPA (2)
+//#define      WLAN_SEC_WPA2  (3)
 char buffer[400];
+int nextEEPROMaddress;
 // Sensor variables
 float mq2, mq3, mq4, mq5, mq6, mq7, mq8, mq9, mq135, hum, temp, lum, uvb;
 //
@@ -56,25 +64,14 @@ SFE_CC3000_Client client = SFE_CC3000_Client(wifi);
 SI7021 si7021;
 Adafruit_BMP085 bmp;
 TSL2561 tsl(TSL2561_ADDR_FLOAT);
-
-
 bool initwifi()
 {
-	//TODO : restore wifi creds from  EEPROM
 	// Initialize CC3000 (configure SPI communications)
-	if (wifi.init()) {
-		Serial.println("CC3000 initialization complete");
-	}
-	else {
-		Serial.println("Something went wrong during CC3000 init!");
-	}
-
-}
-int freeRam()
-{
-	extern int __heap_start, *__brkval;
-	int v;
-	return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+	wifi.init();
+	char *ssid = readEEPROMString(START_ADDRESS, 0);
+	char *password = readEEPROMString(START_ADDRESS, 1);
+	char *sec = readEEPROMString(START_ADDRESS, 2);
+	// wifi.connect(ssid,3, ap_password, timeout);
 }
 
 bool initI2C()
@@ -90,6 +87,77 @@ bool initI2C()
 		return 1;
 	}
 }
+//writes null terminated strings
+bool writeWifiEEPROM(char _ssid[], char _password[], char _security[])
+{
+	nextEEPROMaddress = 0; // Cause addtoEEPROM function to overwrite data using update function
+	if (addToEEPROM(_ssid) == 1 && addToEEPROM(_password) == 1 && addToEEPROM(_security) == 1)
+	{
+		EEPROM.update(nextEEPROMaddress++, EEPROM_END_MARK);
+		return true;
+	}
+	else {
+		return false;
+	}
+
+}
+boolean addToEEPROM(char *text) {
+	if (nextEEPROMaddress + strlen(text) + 1 > EEPROM.length()) {
+		//  Serial.print(F("ERROR: string would overflow EEPROM length of "));
+		//  Serial.print(EEPROM.length());
+		//Serial.println(F(" bytes."));
+		return false;
+	}
+	do {
+		EEPROM.update(nextEEPROMaddress++, (byte)*text);
+	} while (*text++ != '\0');
+	//  Serial.println(F("Written to EEPROM."));
+	return true;
+}
+char *readEEPROMString(int baseAddress, int stringNumber) {
+	int start;   // EEPROM address of the first byte of the string to return.
+	int length;  // length (bytes) of the string to return, less the terminating null.
+	char ch;
+	int nextAddress;  // next address to read from EEPROM.
+	char *result;     // points to the dynamically-allocated result to return.
+	int i;
+	nextAddress = START_ADDRESS;
+	for (i = 0; i < stringNumber; ++i) {
+		// If the first byte is an end mark, we've run out of strings too early.
+		ch = (char)EEPROM.read(nextAddress++);
+		if (ch == (char)EEPROM_END_MARK || nextAddress >= EEPROM.length()) {
+			return (char *)0;  // not enough strings are in EEPROM.
+		}
+
+		// Read through the string's terminating null (0).
+		while (ch != '\0' && nextAddress < EEPROM.length()) {
+			ch = EEPROM.read(nextAddress++);
+		}
+	}
+	// We're now at the start of what should be our string.
+	start = nextAddress;
+	// If the first byte is an end mark, we've run out of strings too early.
+	ch = (char)EEPROM.read(nextAddress++);
+	if (ch == (char)EEPROM_END_MARK) {
+		return (char *)0;  // not enough strings are in EEPROM.
+	}
+	// Count to the end of this string.
+	length = 0;
+	while (ch != '\0' && nextAddress < EEPROM.length()) {
+		++length;
+		ch = EEPROM.read(nextAddress++);
+	}
+	// Allocate space for the string, then copy it.
+	result = new char[length + 1];
+	nextAddress = start;
+	for (i = 0; i < length; ++i) {
+		result[i] = (char)EEPROM.read(nextAddress++);
+	}
+	result[i] = '\0';
+	return result;
+
+}
+
 bool sendDataUSB(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, float _mq3_min, float _mq3_max, float _mq3_avg, float _mq4_min, float _mq4_max, float _mq4_avg, float _mq5_min, float _mq5_max,
 	float _mq5_avg, float _mq6_min, float _mq6_max, float _mq6_avg, float _mq7_min, float _mq7_max, float _mq7_avg, float _mq8_min, float _mq8_max, float _mq8_avg, float _mq9_min, float _mq9_max, float _mq9_avg,
 	float _mq135_min, float _mq135_max, float _mq135_avg, float _temp_min, float _temp_max, float _temp_avg, float _hum_min, float _hum_max, float _hum_avg, float _lum_min, float _lum_max, float _lum_avg,
@@ -180,8 +248,10 @@ bool sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, f
 		return 0;
 	}
 }
+
 void setup()
 {
+	nextEEPROMaddress = START_ADDRESS;
 	Serial.begin(115200);
 	Serial1.begin(115200);
 	pinMode(SHARP_LED, OUTPUT);
@@ -194,3 +264,4 @@ void loop()
 {
 
 }
+
