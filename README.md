@@ -4,6 +4,7 @@ Project link : https://www.hackster.io/14685/arduino-environmental-monitoring-75
 Arduino sketch for Visual Micro.
 
 Add the following libraries to Arduino IDE before compiling :
+
 https://github.com/prajaybasu/SI7021
 
 https://github.com/prajaybasu/SFE_CC3000_Library
