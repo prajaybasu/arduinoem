@@ -3,8 +3,6 @@
  Created:	18-Mar-16 21:16:40
  Author:	Prajay
 */
-
-// the setup function runs once when you press reset or power the board
 #include <ArduinoJson.h>
 #include <Si7021.h>
 #include <TSL2561.h>
@@ -43,6 +41,7 @@
 #define BAUD_BLUETOOTH 250000 // the module can go max upto 1382400, arduino safely upto 200-220k
 #define BAUD_USB       250000 // at 115200 you can send 512 bytes at 225.0 Hz, which is good enough since we also need to plug all of that in to graphs and stuff
 #define TIMEOUT        30000 // Wifi/http timeout
+#define ERR_HEAP_SIZE  400 // (n)bytes = 400 errors per 5 minutes(or whatever upload frequency)
 //Variables which get loaded from eeprom on startup
 // First address of EEPROM to write to.
 // marks the end of the data we wrote to EEPROM
@@ -57,35 +56,88 @@ const byte EEPROM_END_MARK = 0;
 char buffer[400];
 int nextEEPROMaddress;
 // Sensor variables
-float mq2, mq3, mq4, mq5, mq6, mq7, mq8, mq9, mq135, hum, temp, lum, uvb;
-//
+int count = 0; // sampling count
+float mq2_min = 0, mq3_min = 0, mq4_min = 0, mq5_min = 0, mq6_min = 0, mq7_min = 0, mq8_min = 0, mq9_min = 0, mq135_min = 0, humidity_min = 0, temperature_min = 0, lux_min = 0, uvb_min = 0, pressure_min = 0, dust_min = 0, dust1_min = 0, dust25_min = 0;
+float mq2_max = 0, mq3_max = 0, mq4_max = 0, mq5_max = 0, mq6_max = 0, mq7_max = 0, mq8_max = 0, mq9_max = 0, mq135_max = 0, humidity_max = 0, temperature_max = 0, lux_max = 0, uvb_max = 0, pressure_max = 0, dust_max = 0, dust1_max = 0, dust25_max = 0;
+float mq2_avg = 0, mq3_avg = 0, mq4_avg = 0, mq5_avg = 0, mq6_avg = 0, mq7_avg = 0, mq8_avg = 0, mq9_avg = 0, mq135_avg = 0, humidity_avg = 0, temperature_avg = 0, lux_avg = 0, uvb_avg = 0, pressure_avg = 0, dust_avg = 0, dust1_avg = 0, dust25_avg = 0;
+char err[ERR_HEAP_SIZE] = ""; // store last n errors until every wifi request (per 5 mins default), initialize with null terminator
+							  // A = Wifi EEPROM add fail
+							  // E = EEPROM fail
+							  // W = Wifi
+							  // C = Credential/Connection Info
+							  // S = BMP180
+							  // J = jsonobject send to azure fail
+							  // U = USB data send fail
+							  // B = BT data send fail
+							  //1 MQ2
+							  //2 MQ3
+							  //3 MQ4
+							  //4 MQ5
+							  //6 MQ7
+							  //7 MQ8
+							  //8 MQ9
+							  //9 MQ135
+							  //D DSM501A
+							  //G Sharp GP2y... dust sensor
 SFE_CC3000 wifi = SFE_CC3000(CC3000_INT, CC3000_EN, CC3000_CS);
 SFE_CC3000_Client client = SFE_CC3000_Client(wifi);
 SI7021 si7021;
 Adafruit_BMP085 bmp;
 TSL2561 tsl(TSL2561_ADDR_FLOAT);
+StaticJsonBuffer<5000> jsonBuffer;
+JsonObject& outputObject = jsonBuffer.createObject();
+float readTemperature()
+{
+	return si7021.readTemp();
+}
+float readHumidity()
+{
+	return si7021.readHumidity();
+}
+float readPressure()
+{
+	return bmp.readPressure();
+}
+float readLux()
+{
+	return tsl.calculateLux(tsl.getLuminosity(TSL2561_FULLSPECTRUM), tsl.getLuminosity(TSL2561_INFRARED));
+}
 bool initwifi()
 {
 	// Initialize CC3000 (configure SPI communications)
-	wifi.init();
+	if (!wifi.init())
+	{
+		strcat(err, "W");
+		return false;
+	}
 	char *ssid = readEEPROMString(START_ADDRESS, 0);
 	char *password = readEEPROMString(START_ADDRESS, 1);
 	char *sec = readEEPROMString(START_ADDRESS, 2);
-	// wifi.connect(ssid,3, ap_password, timeout);
+	if (!wifi.connect(ssid, sec[0], password, TIMEOUT))
+	{
+		strcat(err, "C");
+		return false;
+	}
+	return true;
 }
 
 bool initI2C()
 {
-	si7021.begin();
-	//check if bmp180 is initialized
-	if (!bmp.begin() || tsl.begin())
-	{
-		return 0;
-	}
-	else
-	{
-		return 1;
-	}
+	si7021.begin(); // this library doesnt have proper check mechanism for NOW that returns
+	si7021.setHumidityRes(12); // set sensor resolution
+	tsl.begin();
+	tsl.setGain(TSL2561_GAIN_16X);
+	tsl.setTiming(TSL2561_INTEGRATIONTIME_101MS)
+		//check if bmp180 is initialized, tsl.begin always returns true
+		if (!bmp.begin())
+		{
+			strcat(err, "S");
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 }
 //writes null terminated strings
 bool writeWifiEEPROM(char _ssid[], char _password[], char _security[])
@@ -96,7 +148,9 @@ bool writeWifiEEPROM(char _ssid[], char _password[], char _security[])
 		EEPROM.update(nextEEPROMaddress++, EEPROM_END_MARK);
 		return true;
 	}
-	else {
+	else
+	{
+		strcat(err, "E");
 		return false;
 	}
 
@@ -106,6 +160,7 @@ boolean addToEEPROM(char *text) {
 		//  Serial.print(F("ERROR: string would overflow EEPROM length of "));
 		//  Serial.print(EEPROM.length());
 		//Serial.println(F(" bytes."));
+		strcat(err, "A");
 		return false;
 	}
 	do {
@@ -160,92 +215,116 @@ char *readEEPROMString(int baseAddress, int stringNumber) {
 
 bool sendDataUSB(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, float _mq3_min, float _mq3_max, float _mq3_avg, float _mq4_min, float _mq4_max, float _mq4_avg, float _mq5_min, float _mq5_max,
 	float _mq5_avg, float _mq6_min, float _mq6_max, float _mq6_avg, float _mq7_min, float _mq7_max, float _mq7_avg, float _mq8_min, float _mq8_max, float _mq8_avg, float _mq9_min, float _mq9_max, float _mq9_avg,
-	float _mq135_min, float _mq135_max, float _mq135_avg, float _temp_min, float _temp_max, float _temp_avg, float _hum_min, float _hum_max, float _hum_avg, float _lum_min, float _lum_max, float _lum_avg,
-	float _uvb_min, float _uvb_max, float _uvb_avg)
+	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
+	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	StaticJsonBuffer<JSON_OBJECT_SIZE(42)> jsonBuffer;
-	JsonObject& object = jsonBuffer.createObject();
-	object["mq2_min"] = _mq2_min; object["mq2_avg"] = _mq2_avg; object["mq2_max"] = _mq2_max;
-	object["mq3_min"] = _mq3_min; object["mq3_avg"] = _mq3_avg; object["mq3_max"] = _mq3_max;
-	object["mq4_min"] = _mq4_min; object["mq4_avg"] = _mq4_avg; object["mq4_max"] = _mq4_max;
-	object["mq5_min"] = _mq5_min; object["mq5_avg"] = _mq5_avg; object["mq5_max"] = _mq5_max;
-	object["mq6_min"] = _mq6_min; object["mq6_avg"] = _mq6_avg; object["mq6_max"] = _mq6_max;
-	object["mq7_min"] = _mq7_min; object["mq7_avg"] = _mq7_avg; object["mq7_max"] = _mq7_max;
-	object["mq8_min"] = _mq8_min; object["mq8_avg"] = _mq8_avg; object["mq8_max"] = _mq8_max;
-	object["mq9_min"] = _mq9_min; object["mq9_avg"] = _mq9_avg; object["mq9_max"] = _mq9_max;
-	object["mq135_min"] = _mq135_min; object["mq135_avg"] = _mq135_avg; object["mq135_max"] = _mq135_max;
-	object["temp_min"] = _temp_min; object["temp_avg"] = _temp_avg; object["temp_max"] = _temp_max;
-	object["hum_min"] = _hum_min; object["hum_avg"] = _hum_avg; object["hum_max"] = _hum_max;
-	object["lum_min"] = _lum_min; object["lum_avg"] = _lum_avg; object["lum_max"] = _lum_max;
-	object["uvb_min"] = _uvb_min; object["uvb_avg"] = _uvb_avg; object["uvb_max"] = _uvb_max;
-	object["err"] = _err;
-	object.printTo(Serial);
+	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max;
+	outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
+	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max;
+	outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
+	outputObject["mq6_min"] = _mq6_min; outputObject["mq6_avg"] = _mq6_avg; outputObject["mq6_max"] = _mq6_max;
+	outputObject["mq7_min"] = _mq7_min; outputObject["mq7_avg"] = _mq7_avg; outputObject["mq7_max"] = _mq7_max;
+	outputObject["mq8_min"] = _mq8_min; outputObject["mq8_avg"] = _mq8_avg; outputObject["mq8_max"] = _mq8_max;
+	outputObject["mq9_min"] = _mq9_min; outputObject["mq9_avg"] = _mq9_avg; outputObject["mq9_max"] = _mq9_max;
+	outputObject["mq135_min"] = _mq135_min; outputObject["mq135_avg"] = _mq135_avg; outputObject["mq135_max"] = _mq135_max;
+	outputObject["temperature_min"] = _temperature_min; outputObject["temperature_avg"] = _temperature_avg; outputObject["temperature_max"] = _temperature_max;
+	outputObject["humidity_min"] = _humidity_min; outputObject["humidity_avg"] = _humidity_avg; outputObject["humidity_max"] = _humidity_max;
+	outputObject["lux_min"] = _lux_min; outputObject["lux_avg"] = _lux_avg; outputObject["lux_max"] = _lux_max;
+	outputObject["uvb_min"] = _uvb_min; outputObject["uvb_avg"] = _uvb_avg; outputObject["uvb_max"] = _uvb_max;
+	outputObject["err"] = _err; outputObject["pressure_min"] = _pressure_min; outputObject["pressure_max"] = _pressure_max; outputObject["pressure_avg"] = _pressure_avg;
+	outputObject["dust_min"] = _dust_min; outputObject["dust_max"] = _dust_max; outputObject["dust_avg"] = _dust_avg;
+	outputObject["dust1_min"] = _dust1_min; outputObject["dust1_max"] = _dust1_max; outputObject["dust1_avg"] = _dust1_avg;
+	outputObject["dust25_min"] = _dust25_min; outputObject["dust25_max"] = _dust25_max; outputObject["dust25_avg"] = _dust25_avg;
+	if (!outputObject.printTo(Serial))
+	{
+		strcat(err, "U");
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }
 //This function takes 39 +1 values from the sensor and then creates a json object, which is sent to the UWP app to 
 bool sendDataBT(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, float _mq3_min, float _mq3_max, float _mq3_avg, float _mq4_min, float _mq4_max, float _mq4_avg, float _mq5_min, float _mq5_max,
 	float _mq5_avg, float _mq6_min, float _mq6_max, float _mq6_avg, float _mq7_min, float _mq7_max, float _mq7_avg, float _mq8_min, float _mq8_max, float _mq8_avg, float _mq9_min, float _mq9_max, float _mq9_avg,
-	float _mq135_min, float _mq135_max, float _mq135_avg, float _temp_min, float _temp_max, float _temp_avg, float _hum_min, float _hum_max, float _hum_avg, float _lum_min, float _lum_max, float _lum_avg,
-	float _uvb_min, float _uvb_max, float _uvb_avg)
+	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
+	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	StaticJsonBuffer<JSON_OBJECT_SIZE(42)> jsonBuffer;
-	JsonObject& object = jsonBuffer.createObject();
-	object["mq2_min"] = _mq2_min; object["mq2_avg"] = _mq2_avg; object["mq2_max"] = _mq2_max;
-	object["mq3_min"] = _mq3_min; object["mq3_avg"] = _mq3_avg; object["mq3_max"] = _mq3_max;
-	object["mq4_min"] = _mq4_min; object["mq4_avg"] = _mq4_avg; object["mq4_max"] = _mq4_max;
-	object["mq5_min"] = _mq5_min; object["mq5_avg"] = _mq5_avg; object["mq5_max"] = _mq5_max;
-	object["mq6_min"] = _mq6_min; object["mq6_avg"] = _mq6_avg; object["mq6_max"] = _mq6_max;
-	object["mq7_min"] = _mq7_min; object["mq7_avg"] = _mq7_avg; object["mq7_max"] = _mq7_max;
-	object["mq8_min"] = _mq8_min; object["mq8_avg"] = _mq8_avg; object["mq8_max"] = _mq8_max;
-	object["mq9_min"] = _mq9_min; object["mq9_avg"] = _mq9_avg; object["mq9_max"] = _mq9_max;
-	object["mq135_min"] = _mq135_min; object["mq135_avg"] = _mq135_avg; object["mq135_max"] = _mq135_max;
-	object["temp_min"] = _temp_min; object["temp_avg"] = _temp_avg; object["temp_max"] = _temp_max;
-	object["hum_min"] = _hum_min; object["hum_avg"] = _hum_avg; object["hum_max"] = _hum_max;
-	object["lum_min"] = _lum_min; object["lum_avg"] = _lum_avg; object["lum_max"] = _lum_max;
-	object["uvb_min"] = _uvb_min; object["uvb_avg"] = _uvb_avg; object["uvb_max"] = _uvb_max;
-	object["err"] = _err;
-	object.printTo(Serial1);
+	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max;
+	outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
+	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max;
+	outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
+	outputObject["mq6_min"] = _mq6_min; outputObject["mq6_avg"] = _mq6_avg; outputObject["mq6_max"] = _mq6_max;
+	outputObject["mq7_min"] = _mq7_min; outputObject["mq7_avg"] = _mq7_avg; outputObject["mq7_max"] = _mq7_max;
+	outputObject["mq8_min"] = _mq8_min; outputObject["mq8_avg"] = _mq8_avg; outputObject["mq8_max"] = _mq8_max;
+	outputObject["mq9_min"] = _mq9_min; outputObject["mq9_avg"] = _mq9_avg; outputObject["mq9_max"] = _mq9_max;
+	outputObject["mq135_min"] = _mq135_min; outputObject["mq135_avg"] = _mq135_avg; outputObject["mq135_max"] = _mq135_max;
+	outputObject["temperature_min"] = _temperature_min; outputObject["temperature_avg"] = _temperature_avg; outputObject["temperature_max"] = _temperature_max;
+	outputObject["humidity_min"] = _humidity_min; outputObject["humidity_avg"] = _humidity_avg; outputObject["humidity_max"] = _humidity_max;
+	outputObject["lux_min"] = _lux_min; outputObject["lux_avg"] = _lux_avg; outputObject["lux_max"] = _lux_max;
+	outputObject["uvb_min"] = _uvb_min; outputObject["uvb_avg"] = _uvb_avg; outputObject["uvb_max"] = _uvb_max;
+	outputObject["err"] = _err; outputObject["pressure_min"] = _pressure_min; outputObject["pressure_max"] = _pressure_max; outputObject["pressure_avg"] = _pressure_avg;
+	outputObject["dust_min"] = _dust_min; outputObject["dust_max"] = _dust_max; outputObject["dust_avg"] = _dust_avg;
+	outputObject["dust1_min"] = _dust1_min; outputObject["dust1_max"] = _dust1_max; outputObject["dust1_avg"] = _dust1_avg;
+	outputObject["dust25_min"] = _dust25_min; outputObject["dust25_max"] = _dust25_max; outputObject["dust25_avg"] = _dust25_avg;
+
+	if (!outputObject.printTo(Serial1))
+	{
+		strcat(err, "B");
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }
 bool sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, float _mq3_min, float _mq3_max, float _mq3_avg, float _mq4_min, float _mq4_max, float _mq4_avg, float _mq5_min, float _mq5_max,
 	float _mq5_avg, float _mq6_min, float _mq6_max, float _mq6_avg, float _mq7_min, float _mq7_max, float _mq7_avg, float _mq8_min, float _mq8_max, float _mq8_avg, float _mq9_min, float _mq9_max, float _mq9_avg,
-	float _mq135_min, float _mq135_max, float _mq135_avg, float _temp_min, float _temp_max, float _temp_avg, float _hum_min, float _hum_max, float _hum_avg, float _lum_min, float _lum_max, float _lum_avg,
-	float _uvb_min, float _uvb_max, float _uvb_avg)
+	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
+	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	StaticJsonBuffer<JSON_OBJECT_SIZE(42)> jsonBuffer;
-	JsonObject& object = jsonBuffer.createObject();
-	object["mq2_min"] = _mq2_min; object["mq2_avg"] = _mq2_avg; object["mq2_max"] = _mq2_max;
-	object["mq3_min"] = _mq3_min; object["mq3_avg"] = _mq3_avg; object["mq3_max"] = _mq3_max;
-	object["mq4_min"] = _mq4_min; object["mq4_avg"] = _mq4_avg; object["mq4_max"] = _mq4_max;
-	object["mq5_min"] = _mq5_min; object["mq5_avg"] = _mq5_avg; object["mq5_max"] = _mq5_max;
-	object["mq6_min"] = _mq6_min; object["mq6_avg"] = _mq6_avg; object["mq6_max"] = _mq6_max;
-	object["mq7_min"] = _mq7_min; object["mq7_avg"] = _mq7_avg; object["mq7_max"] = _mq7_max;
-	object["mq8_min"] = _mq8_min; object["mq8_avg"] = _mq8_avg; object["mq8_max"] = _mq8_max;
-	object["mq9_min"] = _mq9_min; object["mq9_avg"] = _mq9_avg; object["mq9_max"] = _mq9_max;
-	object["mq135_min"] = _mq135_min; object["mq135_avg"] = _mq135_avg; object["mq135_max"] = _mq135_max;
-	object["temp_min"] = _temp_min; object["temp_avg"] = _temp_avg; object["temp_max"] = _temp_max;
-	object["hum_min"] = _hum_min; object["hum_avg"] = _hum_avg; object["hum_max"] = _hum_max;
-	object["lum_min"] = _lum_min; object["lum_avg"] = _lum_avg; object["lum_max"] = _lum_max;
-	object["uvb_min"] = _uvb_min; object["uvb_avg"] = _uvb_avg; object["uvb_max"] = _uvb_max;
-	object["err"] = _err;
+	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max;
+	outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
+	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max;
+	outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
+	outputObject["mq6_min"] = _mq6_min; outputObject["mq6_avg"] = _mq6_avg; outputObject["mq6_max"] = _mq6_max;
+	outputObject["mq7_min"] = _mq7_min; outputObject["mq7_avg"] = _mq7_avg; outputObject["mq7_max"] = _mq7_max;
+	outputObject["mq8_min"] = _mq8_min; outputObject["mq8_avg"] = _mq8_avg; outputObject["mq8_max"] = _mq8_max;
+	outputObject["mq9_min"] = _mq9_min; outputObject["mq9_avg"] = _mq9_avg; outputObject["mq9_max"] = _mq9_max;
+	outputObject["mq135_min"] = _mq135_min; outputObject["mq135_avg"] = _mq135_avg; outputObject["mq135_max"] = _mq135_max;
+	outputObject["temperature_min"] = _temperature_min; outputObject["temperature_avg"] = _temperature_avg; outputObject["temperature_max"] = _temperature_max;
+	outputObject["humidity_min"] = _humidity_min; outputObject["humidity_avg"] = _humidity_avg; outputObject["humidity_max"] = _humidity_max;
+	outputObject["lux_min"] = _lux_min; outputObject["lux_avg"] = _lux_avg; outputObject["lux_max"] = _lux_max;
+	outputObject["uvb_min"] = _uvb_min; outputObject["uvb_avg"] = _uvb_avg; outputObject["uvb_max"] = _uvb_max;
+	outputObject["err"] = _err; outputObject["pressure_min"] = _pressure_min; outputObject["pressure_max"] = _pressure_max; outputObject["pressure_avg"] = _pressure_avg;
+	outputObject["dust_min"] = _dust_min; outputObject["dust_max"] = _dust_max; outputObject["dust_avg"] = _dust_avg;
+	outputObject["dust1_min"] = _dust1_min; outputObject["dust1_max"] = _dust1_max; outputObject["dust1_avg"] = _dust1_avg;
+	outputObject["dust25_min"] = _dust25_min; outputObject["dust25_max"] = _dust25_max; outputObject["dust25_avg"] = _dust25_avg;
 	if (client.connect(server, 80))
 	{
 		sprintf(buffer, "POST /tables/%s HTTP/1.1", table_name);
 		client.println(buffer);
 		sprintf(buffer, "Host: %s", server);
 		client.println(buffer);
-		client.println("ZUMO-API-VERSION: 2.0.0"); // Azure Easy Tables header
+		client.println("ZUMO-API-VERSION: 2.0.0"); // Azure Mobile Services header,not required if your app is configuired not to check version
 		client.println("Content-Type: application/json"); // JSON content type
-		object.printTo(buffer, sizeof(buffer));    // POST body
+		outputObject.printTo(buffer, sizeof(buffer));    // POST body
 		client.print("Content-Length: ");  // Content length
 		client.println(strlen(buffer));
 		// End of headers
 		client.println();
 		// Request body
 		client.println(buffer);
-		return 1;
+		err[0] = '\0';
+		return true;
 	}
 	else
 	{
-		return 0;
+
+		err;
+		strcat(err, "J");
+		return false;
 	}
 }
 
@@ -253,7 +332,7 @@ void setup()
 {
 	nextEEPROMaddress = START_ADDRESS;
 	Serial.begin(115200);
-	Serial1.begin(115200);
+	Serial1.begin(115200); // Apparently COM ports on windows only support upto 115200 baud as per device manager
 	pinMode(SHARP_LED, OUTPUT);
 	pinMode(DSM501A_DO_PM1, INPUT);
 	pinMode(DSM501A_DO_PM25, INPUT);
