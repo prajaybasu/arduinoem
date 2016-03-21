@@ -1,4 +1,6 @@
 # ArduinoEM.sln
+
+[![Join the chat at https://gitter.im/prajaybasu/arduinoem](https://badges.gitter.im/prajaybasu/arduinoem.svg)](https://gitter.im/prajaybasu/arduinoem?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 Project link : https://www.hackster.io/14685/arduino-environmental-monitoring-7508d1
 ## ArduinoEM.vcxproj
 Arduino sketch for Visual Micro.
