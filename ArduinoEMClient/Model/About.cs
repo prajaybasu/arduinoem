@@ -18,11 +18,11 @@ namespace ArduinoEMClient.Model
             Credits = new List<Credit>()
             {
                 // TODO - add credits
-                //new Credit()
-                //{
-                //    Subject = "MVVM",
-                //    ImageUri = new Uri("http://download-codeplex.sec.s-msft.com/Download?ProjectName=mvvmlight&amp;DownloadId=92227&amp;Build=21031")
-                //}
+                new Credit()
+                {
+                    Subject = "MVVM",
+                    ImageUri = new Uri("http://download-codeplex.sec.s-msft.com/Download?ProjectName=mvvmlight&amp;DownloadId=92227&amp;Build=21031")
+               }
             };
         }
 
