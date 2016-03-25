@@ -13,57 +13,51 @@
 #include <Si7021.h>
 #include <SFE_CC3000.h>
 #include <SFE_CC3000_Client.h>
-#define CC3000_INT      2   
-#define CC3000_EN       49   
-#define CC3000_CS       53   
-#define MQ2_AO          54 //A0 on Mega2560
-#define MQ3_AO          55  
-#define MQ4_AO          56
-#define MQ5_AO          57
-#define MQ6_AO          58
-#define MQ7_AO          59
-#define MQ8_AO          60
-#define MQ9_AO          61
-#define MQ135_AO        62
-#define ML8511_AO       63
-#define SHARP_AO        64   // GP2Y1010AU0F Pin 5
-#define SHARP_LED       3     //GP2Y1010AU0F Pin 3 (PWM)
-#define DSM501A_DO_PM1  4     //Pin 2 (PM1 - not PM10)
-#define DSM501A_DO_PM25 5     //Pin 4 (PM2.5)
-#define SENSE_3V3       65   // A11 -Analog pin, to get more precise readings from 3V3 analog sensors
-//Other hard-coded values from datasheets/websites
-#define SHARP_DELAY    280    //280 us (microseconds) from GP2Y1010AU0F datasheet
-#define SHARP_DELAY1   40     //40 us (microseconds) from GP2Y1010AU0F datasheet\
-#define BAUD_BLUETOOTH 250000 // the module can go max upto 1382400, arduino safely upto 200-220k
-#define BAUD_USB       250000 // at 115200 you can send 512 bytes at 225.0 Hz, which is good enough since we also need to plug all of that in to graphs and stuff
-#define TIMEOUT        30000 // Wifi/http timeout
-#define ERR_HEAP_SIZE  256 // (n)bytes = 256 errors per 5 minutes(or whatever upload frequency)
-int maxCount;
-const char table_name[] = "WeatherDataItem"; // storing these in EEPROM is not viable
+const int CC3000_INT      = 2;      //D2 on Mega2560. CC3000 INTERRUPT pin
+const int CC3000_EN       = 49;     //D49 on Mega2560. CC3000 ENABLE pin. Can be any Digitial pin.
+const int CC3000_CS       = 53;		//D53(Hardware SPI Chip Select) on Mega2560. CC3000 Chip Select pin.
+const int MQ2_AO          = 54;     //A0 on Mega2560. 
+const int MQ3_AO          = 55;     //A1 on Mega2560. 
+const int MQ4_AO          = 56;     //A2 on Mega2560. 
+const int MQ5_AO          = 57;     //A3 on Mega2560. 
+const int MQ6_AO          = 58;     //A4 on Mega2560. 
+const int MQ7_AO          = 59;     //A5 on Mega2560. 
+const int MQ8_AO          = 60;     //A6 on Mega2560. 
+const int MQ9_AO          = 61;     //A7 on Mega2560. 
+const int MQ135_AO        = 62;     //A8 on Mega2560. 
+const int ML8511_AO       = 63;     //A9 on Mega2560. 
+const int SHARP_AO        = 64;     //A10 on Mega2560. GP2Y1010AU0F Pin 5.
+const int SHARP_LED       = 3;      //D3 (PWM) on Mega2560. GP2Y1010AU0F Pin 3.
+const int DSM501A_DO_PM1  = 4;      //D4 (PWM) on Mega2560. DSM501A Pin 2 (PM1 - not PM10)
+const int DSM501A_DO_PM25 = 5;      //D5 (PWM) on Mega2560. DSM501A Pin 4 (PM2.5)
+const int SENSE_3V3       = 65;     //A11 on Mega2560. For precise voltage reference for 3V3 sensors.
+const int SHARP_DELAY     = 280;    //280 us (microseconds) from GP2Y1010AU0F datasheet
+const int SHARP_DELAY1    = 40;     //40 us (microseconds) from GP2Y1010AU0F datasheet
+const int BAUD_BLUETOOTH  = 115200; //the module can go max upto 1382400, arduino safely upto 200-220k
+const int BAUD_USB        = 115200; //Good for upto 10Hz (+/-1) data exchange rate. 
+const int TIMEOUT         = 30000;  //Wifi/http timeout
+const int ERR_HEAP_SIZE   = 256;    //(n)bytes = 256 errors per 5 minutes(or whatever upload frequency), do not go over 512 to avoid CC3000 buffer overflow
+const int maxCount        = 300;    //Max number of samples
+const char table_name[] = "WeatherDataItem"; //
 const char server[] = "arduinoem.azurewebsites.net";  // too long, might try concat on load, but that'll defeat its purpose
 const int START_ADDRESS = 0;
 const byte EEPROM_END_MARK = 0;
 int device_id = 1;
-//#define      WLAN_SEC_UNSEC (0)
-//#define      WLAN_SEC_WEP  (1)
-//#define      WLAN_SEC_WPA (2)
-//#define      WLAN_SEC_WPA2  (3)
-boolean USBData;
-boolean BTData;
-boolean dataUSB_send;
-boolean dataBT_send;
-boolean dataWifi_send;
-boolean wifiConnected;
-char buffer[1536];
+boolean USBData;                   //Is data over USB enabled 
+boolean BTData;                    //Is data over Bluetooth enabled
+boolean dataUSB_send;              //Is data being sent via USB
+boolean dataBT_send;               //Is data being sent via Bluetooth
+boolean dataWifi_send;             //Is data being sent via Wifi (CC33000)
+boolean wifiConnected;             //Is CC3000 connected to a wifi AP 
+char buffer[1536];                 //HTTP client buffer
 int nextEEPROMaddress;
-int deviceId = 0;
-// Sensor variables
+int deviceId = 0;                  //To avoid conflicts when building a newtork of such devices
 int lastMills;
-int count = 0; // sampling count
-float mq2_min = 0, mq3_min = 0, mq4_min = 0, mq5_min = 0, mq6_min = 0, mq7_min = 0, mq8_min = 0, mq9_min = 0, mq135_min = 0, humidity_min = 0, temperature_min = 0, lux_min = 0, uvb_min = 0, pressure_min = 0, dust_min = 0, dust1_min = 0, dust25_min = 0;
-float mq2_max = 0, mq3_max = 0, mq4_max = 0, mq5_max = 0, mq6_max = 0, mq7_max = 0, mq8_max = 0, mq9_max = 0, mq135_max = 0, humidity_max = 0, temperature_max = 0, lux_max = 0, uvb_max = 0, pressure_max = 0, dust_max = 0, dust1_max = 0, dust25_max = 0;
-float mq2_avg = 0, mq3_avg = 0, mq4_avg = 0, mq5_avg = 0, mq6_avg = 0, mq7_avg = 0, mq8_avg = 0, mq9_avg = 0, mq135_avg = 0, humidity_avg = 0, temperature_avg = 0, lux_avg = 0, uvb_avg = 0, pressure_avg = 0, dust_avg = 0, dust1_avg = 0, dust25_avg = 0;
-char err[ERR_HEAP_SIZE] = "";
+int count = 0; // Current sampling count
+float mq2_min = 0 , mq3_min = 0, mq4_min = 0, mq5_min = 0, mq6_min = 0, mq7_min = 0, mq8_min = 0, mq9_min = 0, mq135_min = 0, humidity_min = 0, temperature_min = 0, lux_min = 0, uvb_min = 0, pressure_min = 0, dust_min = 0, dust1_min = 0, dust25_min = 0;	// Minimum stored value for current sample period
+float mq2_max = 0, mq3_max = 0, mq4_max = 0, mq5_max = 0, mq6_max = 0, mq7_max = 0, mq8_max = 0, mq9_max = 0, mq135_max = 0, humidity_max = 0, temperature_max = 0, lux_max = 0, uvb_max = 0, pressure_max = 0, dust_max = 0, dust1_max = 0, dust25_max = 0;	// Average value once divided by count, since it gets added to sample
+float mq2_avg = 0, mq3_avg = 0, mq4_avg = 0, mq5_avg = 0, mq6_avg = 0, mq7_avg = 0, mq8_avg = 0, mq9_avg = 0, mq135_avg = 0, humidity_avg = 0, temperature_avg = 0, lux_avg = 0, uvb_avg = 0, pressure_avg = 0, dust_avg = 0, dust1_avg = 0, dust25_avg = 0;	// Minimum stored value for current sample period
+char err[ERR_HEAP_SIZE] = ""; // initialze with \0 for sanity
 // store last n errors until every wifi request (per 5 mins default), initialize with null terminator
 // A = Wifi EEPROM add fail
 // E = EEPROM fail
@@ -83,11 +77,16 @@ char err[ERR_HEAP_SIZE] = "";
 //9 MQ135
 //D DSM501A
 //G Sharp GP2y... dust sensor
-SFE_CC3000 wifi = SFE_CC3000(CC3000_INT, CC3000_EN, CC3000_CS);
-SFE_CC3000_Client client = SFE_CC3000_Client(wifi);
-SI7021 si7021;
-Adafruit_BMP085 bmp;
-TSL2561 tsl(TSL2561_ADDR_FLOAT);
+
+SFE_CC3000 wifi = SFE_CC3000(CC3000_INT, CC3000_EN, CC3000_CS); // Object reference to the wifi module
+SFE_CC3000_Client client = SFE_CC3000_Client(wifi); // Object reference to http client
+//#define      WLAN_SEC_UNSEC (0)
+//#define      WLAN_SEC_WEP  (1)
+//#define      WLAN_SEC_WPA (2)
+//#define      WLAN_SEC_WPA2  (3)
+SI7021 si7021; // Object Referece to si7021 sensor
+Adafruit_BMP085 bmp; // Object Reference to bmp180 sensor
+TSL2561 tsl(TSL2561_ADDR_FLOAT); // Object reference to TSL2561 sensor
 void sampleData()
 {
 
@@ -353,7 +352,7 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 {
 	//if(data
 	dataWifi_send = true;
-	StaticJsonBuffer<1536> jsonBuffer;
+	StaticJsonBuffer<1536> jsonBuffer; 
 	JsonObject& outputObject = jsonBuffer.createObject();
 	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max; outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
 	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max; outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
@@ -394,8 +393,8 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 void setup()
 {
 	nextEEPROMaddress = START_ADDRESS;
-	Serial.begin(115200);
-	Serial1.begin(115200); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
+	Serial.begin(BAUD_USB);
+	Serial1.begin(BAUD_BLUETOOTH); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
 	pinMode(SHARP_LED, OUTPUT);
 	pinMode(DSM501A_DO_PM1, INPUT);
 	pinMode(DSM501A_DO_PM25, INPUT);

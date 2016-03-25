@@ -126,7 +126,7 @@ namespace ArduinoEMClient.DataModel
         public double dust25_max { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public double dust25_avg { get; set; }
-       // [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-      //  public string device_id { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string deviceId { get; set; }
     }
 }
