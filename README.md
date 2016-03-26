@@ -18,6 +18,8 @@ https://github.com/prajaybasu/Adafruit-BMP085-Library
 
 https://github.com/prajaybasu/TSL2561-Arduino-Library
 
+https://github.com/prajaybasu/DSM501
+
 https://github.com/prajaybasu/ArduinoJson
 ## ArduinoEMClient.csproj
 UWP client for Azure App Service.
