@@ -15,29 +15,28 @@
 #include <Si7021.h>
 #include <SFE_CC3000.h>
 #include <SFE_CC3000_Client.h>
-const int CC3000_INT = 2;      //D2 on Mega2560. CC3000 INTERRUPT pin
-const int CC3000_EN = 49;     //D49 on Mega2560. CC3000 ENABLE pin. Can be any Digitial pin.
-const int CC3000_CS = 53;		//D53(Hardware SPI Chip Select) on Mega2560. CC3000 Chip Select pin.
-const int MQ2_AO = 54;     //A0 on Mega2560. 
-const int MQ3_AO = 55;     //A1 on Mega2560. 
-const int MQ4_AO = 56;     //A2 on Mega2560. 
-const int MQ5_AO = 57;     //A3 on Mega2560. 
-const int MQ6_AO = 58;     //A4 on Mega2560. 
-const int MQ7_AO = 59;     //A5 on Mega2560. 
-const int MQ8_AO = 60;     //A6 on Mega2560. 
-const int MQ9_AO = 61;     //A7 on Mega2560. 
-const int MQ135_AO = 62;     //A8 on Mega2560. 
-const int ML8511_AO = 63;     //A9 on Mega2560. 
-const int SHARP_AO = 64;     //A10 on Mega2560. GP2Y1010AU0F Pin 5.
-const int SHARP_LED = 3;      //D3 (PWM) on Mega2560. GP2Y1010AU0F Pin 3.
-const int DSM501A_DO_PM1 = 4;      //D4 (PWM) on Mega2560. DSM501A Pin 2 (PM1 - not PM10)
-const int DSM501A_DO_PM25 = 5;      //D5 (PWM) on Mega2560. DSM501A Pin 4 (PM2.5)
-const int SENSE_3V3 = 65;     //A11 on Mega2560. For precise voltage reference for 3V3 sensors.
-const int BAUD_BLUETOOTH = 115200; //the module can go max upto 1382400, arduino safely upto 200-220k
-const int BAUD_USB = 115200; //Good for upto 10Hz (+/-1) data exchange rate. 
-const int TIMEOUT = 30000;  //Wifi/http timeout
-const int ERR_HEAP_SIZE = 256;    //(n)bytes = 256 errors per 5 minutes(or whatever upload frequency), do not go over 512 to avoid CC3000 buffer overflow
-const int maxCount = 300;    //Max number of samples
+#include <avr/pgmspace.h>
+const PROGMEM int CC3000_INT = 2;      //D2 on Mega2560. CC3000 INTERRUPT pin
+const PROGMEM int CC3000_EN = 49;     //D49 on Mega2560. CC3000 ENABLE pin. Can be any Digitial pin.
+const PROGMEM int CC3000_CS = 53;		//D53(Hardware SPI Chip Select) on Mega2560. CC3000 Chip Select pin.
+const PROGMEM int MQ2_AO = 54;     //A0 on Mega2560. 
+const PROGMEM int MQ3_AO = 55;     //A1 on Mega2560. 
+const PROGMEM int MQ4_AO = 56;     //A2 on Mega2560. 
+const PROGMEM int MQ5_AO = 57;     //A3 on Mega2560. 
+const PROGMEM int MQ6_AO = 58;     //A4 on Mega2560. 
+const PROGMEM int MQ7_AO = 59;     //A5 on Mega2560. 
+const PROGMEM int MQ8_AO = 60;     //A6 on Mega2560. 
+const PROGMEM int MQ9_AO = 61;     //A7 on Mega2560. 
+const PROGMEM int MQ135_AO = 62;     //A8 on Mega2560. 
+const PROGMEM int ML8511_AO = 63;     //A9 on Mega2560. 
+const PROGMEM int SHARP_AO = 64;     //A10 on Mega2560. GP2Y1010AU0F Pin 5.
+const PROGMEM int SHARP_LED = 3;      //D3 (PWM) on Mega2560. GP2Y1010AU0F Pin 3.
+const PROGMEM int DSM501A_DO_PM1 = 4;      //D4 (PWM) on Mega2560. DSM501A Pin 2 (PM1 - not PM10)
+const PROGMEM int DSM501A_DO_PM25 = 5;      //D5 (PWM) on Mega2560. DSM501A Pin 4 (PM2.5)
+const PROGMEM int SENSE_3V3 = 65;     //A11 on Mega2560. For precise voltage reference for 3V3 sensors.
+const PROGMEM int TIMEOUT = 30000;  //Wifi/http timeout
+const PROGMEM int ERR_HEAP_SIZE = 256;    //(n)bytes = 256 errors per 5 minutes(or whatever upload frequency), do not go over 512 to avoid CC3000 buffer overflow
+const PROGMEM int maxCount = 300;    //Max number of samples
 const char table_name[] = "WeatherDataItem"; //
 const char server[] = "arduinoem.azurewebsites.net";  // too long, might try concat on load, but that'll defeat its purpose
 const int START_ADDRESS = 0;
@@ -45,16 +44,13 @@ const byte EEPROM_END_MARK = 0;
 int device_id = 1;
 boolean USBData;                   //Is data over USB enabled 
 boolean BTData;                    //Is data over Bluetooth enabled
-boolean dataUSB_send;              //Is data being sent via USB
-boolean dataBT_send;               //Is data being sent via Bluetooth
-boolean dataWifi_send;             //Is data being sent via Wifi (CC33000)
 boolean wifiConnected;             //Is CC3000 connected to a wifi AP 
-boolean sampleData_enable;
 char buffer[1536];                 //HTTP client buffer
 int nextEEPROMaddress;
 int deviceId = 0;                  //To avoid conflicts when building a newtork of such devices
 unsigned int lastMillis_data;
 unsigned int lastMillis_sample;
+unsigned int lastMillis_send;
 int count = 0; // Current sampling count
 float mq2_min = 1024, mq3_min = 1024, mq4_min = 1024, mq5_min = 1024, mq6_min = 1024, mq7_min = 1024, mq8_min = 1024, mq9_min = 1024, mq135_min = 1024, humidity_min = 1024, temperature_min = 1024, lux_min = 1024, uvb_min = 1024, pressure_min = 1024, dust_min = 1024, dust1_min = 1024, dust25_min = 1024;	// Minimum stored value for current sample period. NOTE  : use non zero initial value, high enough
 float mq2_max = 0, mq3_max = 0, mq4_max = 0, mq5_max = 0, mq6_max = 0, mq7_max = 0, mq8_max = 0, mq9_max = 0, mq135_max = 0, humidity_max = 0, temperature_max = 0, lux_max = 0, uvb_max = 0, pressure_max = 0, dust_max = 0, dust1_max = 0, dust25_max = 0;	// Average value once divided by count, since it gets added to sample
@@ -86,6 +82,7 @@ SFE_CC3000_Client client = SFE_CC3000_Client(wifi); // Object reference to http 
 //#define      WLAN_SEC_WEP  (1)
 //#define      WLAN_SEC_WPA (2)
 //#define      WLAN_SEC_WPA2  (3)
+
 DSM501 dsm501(DSM501A_DO_PM1, DSM501A_DO_PM25);
 SI7021 si7021; // Object Referece to si7021 sensor
 Adafruit_BMP085 bmp; // Object Reference to bmp180 sensor
@@ -93,17 +90,21 @@ TSL2561 tsl(TSL2561_ADDR_FLOAT); // Object reference to TSL2561 sensor
 
 void sampleData()
 {
-	if (sampleData_enable) // just making sure, dont wanna go into deep logic to check if it ever happens. it will be very bad if this changes the values while final averaging
+	count++;
+	float uvb = readUVB();
+	if (uvb > uvb_max)
 	{
-		count++;
-		
-			float uvb = readUVB(); // Powered by 3V3 LDO
-			sampleIICSensors();
-
-			sampleGasSensors();
+		uvb_max = uvb;
 	}
+	if (uvb < uvb_min)
+	{
+		uvb_min = uvb;
+	}
+	uvb += uvb;
+	sampleIICSensors();
+	sampleGasSensors();
 }
-void sendSampledData() 
+void sendSampledData()
 {
 	sendDataWifi(err, mq2_min, mq2_max, (mq2_avg / count), mq3_min, mq3_max, (mq3_avg / count), mq4_min, mq4_max,
 		(mq4_avg / count), mq5_min, mq5_max, (mq5_avg / count), mq6_min, mq6_max, (mq6_avg / count),
@@ -116,9 +117,9 @@ void sendSampledData()
 		dust1_min, dust1_max, (dust1_avg / count));
 	//reset all variables 
 	count = 0;
-	mq2_min = 1024; mq3_min = 1024; mq4_min = 1024; mq5_min = 1024; mq6_min = 1024; mq7_min = 1024; mq8_min = 1024; mq9_min = 1024; mq135_min = 1024; humidity_min = 1024; temperature_min = 1024; lux_min = 1024; uvb_min = 1024; pressure_min = 1024; dust_min = 1024; dust1_min = 1024; dust25_min = 1024;	
+	mq2_min = 1024; mq3_min = 1024; mq4_min = 1024; mq5_min = 1024; mq6_min = 1024; mq7_min = 1024; mq8_min = 1024; mq9_min = 1024; mq135_min = 1024; humidity_min = 1024; temperature_min = 1024; lux_min = 1024; uvb_min = 1024; pressure_min = 1024; dust_min = 1024; dust1_min = 1024; dust25_min = 1024;
 	mq2_max = 0; mq3_max = 0; mq4_max = 0; mq5_max = 0; mq6_max = 0; mq7_max = 0; mq8_max = 0; mq9_max = 0; mq135_max = 0; humidity_max = 0; temperature_max = 0; lux_max = 0; uvb_max = 0; pressure_max = 0; dust_max = 0; dust1_max = 0; dust25_max = 0;
-	mq2_avg = 0; mq3_avg = 0; mq4_avg = 0; mq5_avg = 0; mq6_avg = 0; mq7_avg = 0; mq8_avg = 0; mq9_avg = 0; mq135_avg = 0; humidity_avg = 0; temperature_avg = 0; lux_avg = 0; uvb_avg = 0; pressure_avg = 0; dust_avg = 0; dust1_avg = 0; dust25_avg = 0;	
+	mq2_avg = 0; mq3_avg = 0; mq4_avg = 0; mq5_avg = 0; mq6_avg = 0; mq7_avg = 0; mq8_avg = 0; mq9_avg = 0; mq135_avg = 0; humidity_avg = 0; temperature_avg = 0; lux_avg = 0; uvb_avg = 0; pressure_avg = 0; dust_avg = 0; dust1_avg = 0; dust25_avg = 0;
 
 }
 void sampleDustSensors()
@@ -148,7 +149,9 @@ void sampleDustSensors()
 	{
 		dust25_min = dust25;
 	}
-
+	dust_avg += dust;
+	dust1_avg += dust1;
+	dust25_avg += dust25;
 }
 //Samples I2C sensors
 //To be called from another function only
@@ -204,7 +207,7 @@ void sampleGasSensors()
 	}
 	if (mq2 < mq2_min)
 	{
-		mq2 = mq2_min;
+		mq2_min = mq2;
 	}
 	if (mq3 > mq3_max)
 	{
@@ -278,7 +281,7 @@ void sampleGasSensors()
 
 }
 
-//Queries SI7021 and returns the temperature in °C (degrees Celsius)
+//Queries SI7021 and returns the temperature in ï¿½C (degrees Celsius)
 float readTemperature()
 {
 	return si7021.readTemp();
@@ -323,15 +326,14 @@ float readDust1()
 float readDust25()
 {
 	return dsm501.getParticleWeight(1);
-}float averageAnalogRead(int pinToRead)
+}
+float averageAnalogRead(int pinToRead)
 {
 	byte numberOfReadings = 8;
-	 float runningValue = 0;
-
+	float runningValue = 0;
 	for (int x = 0; x < numberOfReadings; x++)
 		runningValue += analogRead(pinToRead);
 	runningValue /= numberOfReadings;
-
 	return(runningValue);
 }
 //Initializes CC3000 and returns false if it fails to initialize or connect to the stored wifi credentials
@@ -464,7 +466,7 @@ char *readEEPROMString(int baseAddress, int stringNumber)
 // Make sure to call the function using a mills timer
 boolean sendDataUSB()
 {
-	if (USBData && !dataUSB_send && !dataBT_send && !dataWifi_send)
+	if (USBData)
 	{
 		sendDataUSB(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
 	}
@@ -475,7 +477,7 @@ boolean sendDataUSB()
 // Make sure to call the function using a mills timer
 boolean sendDataBT()
 {
-	if (BTData && !dataUSB_send && !dataBT_send && !dataWifi_send)
+	if (BTData)
 	{
 		sendDataBT(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
 	}
@@ -488,8 +490,7 @@ boolean sendDataUSB(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg,
 	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
 	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	dataUSB_send = true;
-	StaticJsonBuffer<1536> jsonBuffer;
+	StaticJsonBuffer<1024> jsonBuffer;
 	JsonObject& outputObject = jsonBuffer.createObject();
 	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max; outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
 	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max; outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
@@ -503,14 +504,12 @@ boolean sendDataUSB(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg,
 	if (!outputObject.printTo(Serial))
 	{
 		strcat(err, "U");
-		dataUSB_send = false;
 		return false;
 	}
 	else
 	{
 		Serial.write((byte)'\r');
 		Serial.write((byte)'\n');
-		dataUSB_send = false;
 		return true;
 	}
 }
@@ -521,8 +520,7 @@ boolean sendDataBT(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, 
 	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
 	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	dataBT_send = true;
-	StaticJsonBuffer<1536> jsonBuffer;
+	StaticJsonBuffer<1024> jsonBuffer;
 	JsonObject& outputObject = jsonBuffer.createObject();
 	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max; outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
 	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max; outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
@@ -536,14 +534,12 @@ boolean sendDataBT(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg, 
 	if (!outputObject.printTo(Serial1))
 	{
 		strcat(err, "B");
-		dataBT_send = false;
 		return false;
 	}
 	else
 	{
 		Serial1.write((byte)'\r');
 		Serial1.write((byte)'\n');
-		dataBT_send = false;
 		return true;
 	}
 }
@@ -554,8 +550,7 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
 	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	dataWifi_send = true;
-	StaticJsonBuffer<1536> jsonBuffer;
+	StaticJsonBuffer<1024> jsonBuffer;
 	JsonObject& outputObject = jsonBuffer.createObject();
 	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max; outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
 	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max; outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
@@ -582,12 +577,10 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 		client.println();
 		client.println(buffer);
 		err[0] = '\0';
-		dataWifi_send = false;
 		return true;
 	}
 	else
 	{
-		dataWifi_send = false;
 		strcat(err, "J");
 		return false;
 	}
@@ -596,24 +589,41 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 void setup()
 {
 	nextEEPROMaddress = START_ADDRESS;
-	Serial.begin(BAUD_USB);
-	Serial1.begin(BAUD_BLUETOOTH); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
+	Serial.begin(115200);
+	Serial1.begin(115200); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
+	//Serial.println("Start setup");
 	SharpDust.begin(SHARP_LED, SHARP_AO);
+	//Serial.println("Initialize Sharp Dust");
+	lastMillis_data = millis();
+	lastMillis_sample = millis();
+	lastMillis_send = millis();
 	initWifi();
-	//initI2C(); // initialize I2C sensors
-  //sendDataWifi("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
+	//Serial.println("Initialize CC3000");
+	initI2C(); // initialize I2C sensors
+ // sendDataWifi("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
+
 }
 //Loops forever. Checks for any incoming serial data and the time to stop sampling and send the data using other functions.
+int freeRam() {
+	extern int __heap_start, *__brkval;
+	int v;
+	return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+}
 void loop()
 {
-
-	if (millis() - lastMillis_data > 300000)
+	//Serial.println("Enter loop");
+	if (millis() - lastMillis_data > 30000 && count != 0)
 	{
+		Serial.println("data upload");
+		Serial.println(freeRam());
 		sendSampledData();
+		Serial.println(freeRam());
+		lastMillis_data = millis();
 	}
 	else if (millis() - lastMillis_sample > 500)
 	{
 		sampleData();
+		lastMillis_sample = millis();
 	}
 	if (Serial.available() > 1)
 	{
@@ -623,9 +633,19 @@ void loop()
 	{
 		SerialEvent1();
 	}
-	// sendDataUSB("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
-   // sendDataWifi("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
+	//Serial.println("Finish Serial");
+
+	if (millis() - lastMillis_send > 500)
+	{
+		sendDataUSB();
+		sendDataBT();
+		lastMillis_send = lastMillis_send;
+	}
+	//Serial.println("Exit loop");
+
+
 }
+
 //By default triggered when any data is received on Serial1(Bluetooth here) interface.
 void SerialEvent1()
 {
@@ -690,6 +710,7 @@ void SerialEvent()
 	{
 		if (data == 1)
 		{
+			Serial.println("Enabled");
 			USBData = true;
 		}
 		else if (data == 0)
