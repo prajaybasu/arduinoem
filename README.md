@@ -6,19 +6,21 @@ Project link : https://www.hackster.io/14685/arduino-environmental-monitoring-75
 ## ArduinoEM.vcxproj
 Arduino sketch for Visual Micro.
 
-Add the following libraries to Arduino IDE before compiling  :
+Add the following libraries/changes to Arduino IDE before compiling  :
 
-https://github.com/prajaybasu/arduino [ modified hw serial buffer]
+https://github.com/prajaybasu/arduino [ modified hw serial buffer, see commits]
 
 https://github.com/prajaybasu/SI7021
 
-https://github.com/prajaybasu/SFE_CC3000_Library [ modified rx tx buffer]
+https://github.com/prajaybasu/SFE_CC3000_Library [ modified rx tx buffer,see commits]
 
 https://github.com/prajaybasu/Adafruit-BMP085-Library
 
 https://github.com/prajaybasu/TSL2561-Arduino-Library
 
 https://github.com/prajaybasu/DSM501
+
+https://github.com/prajaybasu/sharp_dust_gp2y1010au
 
 https://github.com/prajaybasu/ArduinoJson
 ## ArduinoEMClient.csproj
