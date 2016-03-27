@@ -3,6 +3,8 @@
  Created:	18-Mar-16 21:16:40
  Author:	Prajay
 */
+#include <SharpDust.h>
+#include <DSM501.h>
 #include <ArduinoJson.h>
 #include <Si7021.h>
 #include <TSL2561.h>
@@ -13,31 +15,29 @@
 #include <Si7021.h>
 #include <SFE_CC3000.h>
 #include <SFE_CC3000_Client.h>
-const int CC3000_INT      = 2;      //D2 on Mega2560. CC3000 INTERRUPT pin
-const int CC3000_EN       = 49;     //D49 on Mega2560. CC3000 ENABLE pin. Can be any Digitial pin.
-const int CC3000_CS       = 53;		//D53(Hardware SPI Chip Select) on Mega2560. CC3000 Chip Select pin.
-const int MQ2_AO          = 54;     //A0 on Mega2560. 
-const int MQ3_AO          = 55;     //A1 on Mega2560. 
-const int MQ4_AO          = 56;     //A2 on Mega2560. 
-const int MQ5_AO          = 57;     //A3 on Mega2560. 
-const int MQ6_AO          = 58;     //A4 on Mega2560. 
-const int MQ7_AO          = 59;     //A5 on Mega2560. 
-const int MQ8_AO          = 60;     //A6 on Mega2560. 
-const int MQ9_AO          = 61;     //A7 on Mega2560. 
-const int MQ135_AO        = 62;     //A8 on Mega2560. 
-const int ML8511_AO       = 63;     //A9 on Mega2560. 
-const int SHARP_AO        = 64;     //A10 on Mega2560. GP2Y1010AU0F Pin 5.
-const int SHARP_LED       = 3;      //D3 (PWM) on Mega2560. GP2Y1010AU0F Pin 3.
-const int DSM501A_DO_PM1  = 4;      //D4 (PWM) on Mega2560. DSM501A Pin 2 (PM1 - not PM10)
+const int CC3000_INT = 2;      //D2 on Mega2560. CC3000 INTERRUPT pin
+const int CC3000_EN = 49;     //D49 on Mega2560. CC3000 ENABLE pin. Can be any Digitial pin.
+const int CC3000_CS = 53;		//D53(Hardware SPI Chip Select) on Mega2560. CC3000 Chip Select pin.
+const int MQ2_AO = 54;     //A0 on Mega2560. 
+const int MQ3_AO = 55;     //A1 on Mega2560. 
+const int MQ4_AO = 56;     //A2 on Mega2560. 
+const int MQ5_AO = 57;     //A3 on Mega2560. 
+const int MQ6_AO = 58;     //A4 on Mega2560. 
+const int MQ7_AO = 59;     //A5 on Mega2560. 
+const int MQ8_AO = 60;     //A6 on Mega2560. 
+const int MQ9_AO = 61;     //A7 on Mega2560. 
+const int MQ135_AO = 62;     //A8 on Mega2560. 
+const int ML8511_AO = 63;     //A9 on Mega2560. 
+const int SHARP_AO = 64;     //A10 on Mega2560. GP2Y1010AU0F Pin 5.
+const int SHARP_LED = 3;      //D3 (PWM) on Mega2560. GP2Y1010AU0F Pin 3.
+const int DSM501A_DO_PM1 = 4;      //D4 (PWM) on Mega2560. DSM501A Pin 2 (PM1 - not PM10)
 const int DSM501A_DO_PM25 = 5;      //D5 (PWM) on Mega2560. DSM501A Pin 4 (PM2.5)
-const int SENSE_3V3       = 65;     //A11 on Mega2560. For precise voltage reference for 3V3 sensors.
-const int SHARP_DELAY     = 280;    //280 us (microseconds) from GP2Y1010AU0F datasheet
-const int SHARP_DELAY1    = 40;     //40 us (microseconds) from GP2Y1010AU0F datasheet
-const int BAUD_BLUETOOTH  = 115200; //the module can go max upto 1382400, arduino safely upto 200-220k
-const int BAUD_USB        = 115200; //Good for upto 10Hz (+/-1) data exchange rate. 
-const int TIMEOUT         = 30000;  //Wifi/http timeout
-const int ERR_HEAP_SIZE   = 256;    //(n)bytes = 256 errors per 5 minutes(or whatever upload frequency), do not go over 512 to avoid CC3000 buffer overflow
-const int maxCount        = 300;    //Max number of samples
+const int SENSE_3V3 = 65;     //A11 on Mega2560. For precise voltage reference for 3V3 sensors.
+const int BAUD_BLUETOOTH = 115200; //the module can go max upto 1382400, arduino safely upto 200-220k
+const int BAUD_USB = 115200; //Good for upto 10Hz (+/-1) data exchange rate. 
+const int TIMEOUT = 30000;  //Wifi/http timeout
+const int ERR_HEAP_SIZE = 256;    //(n)bytes = 256 errors per 5 minutes(or whatever upload frequency), do not go over 512 to avoid CC3000 buffer overflow
+const int maxCount = 300;    //Max number of samples
 const char table_name[] = "WeatherDataItem"; //
 const char server[] = "arduinoem.azurewebsites.net";  // too long, might try concat on load, but that'll defeat its purpose
 const int START_ADDRESS = 0;
@@ -49,12 +49,14 @@ boolean dataUSB_send;              //Is data being sent via USB
 boolean dataBT_send;               //Is data being sent via Bluetooth
 boolean dataWifi_send;             //Is data being sent via Wifi (CC33000)
 boolean wifiConnected;             //Is CC3000 connected to a wifi AP 
+boolean sampleData_enable;
 char buffer[1536];                 //HTTP client buffer
 int nextEEPROMaddress;
 int deviceId = 0;                  //To avoid conflicts when building a newtork of such devices
-int lastMills;
+unsigned int lastMillis_data;
+unsigned int lastMillis_sample;
 int count = 0; // Current sampling count
-float mq2_min = 0 , mq3_min = 0, mq4_min = 0, mq5_min = 0, mq6_min = 0, mq7_min = 0, mq8_min = 0, mq9_min = 0, mq135_min = 0, humidity_min = 0, temperature_min = 0, lux_min = 0, uvb_min = 0, pressure_min = 0, dust_min = 0, dust1_min = 0, dust25_min = 0;	// Minimum stored value for current sample period
+float mq2_min = 1024, mq3_min = 1024, mq4_min = 1024, mq5_min = 1024, mq6_min = 1024, mq7_min = 1024, mq8_min = 1024, mq9_min = 1024, mq135_min = 1024, humidity_min = 1024, temperature_min = 1024, lux_min = 1024, uvb_min = 1024, pressure_min = 1024, dust_min = 1024, dust1_min = 1024, dust25_min = 1024;	// Minimum stored value for current sample period. NOTE  : use non zero initial value, high enough
 float mq2_max = 0, mq3_max = 0, mq4_max = 0, mq5_max = 0, mq6_max = 0, mq7_max = 0, mq8_max = 0, mq9_max = 0, mq135_max = 0, humidity_max = 0, temperature_max = 0, lux_max = 0, uvb_max = 0, pressure_max = 0, dust_max = 0, dust1_max = 0, dust25_max = 0;	// Average value once divided by count, since it gets added to sample
 float mq2_avg = 0, mq3_avg = 0, mq4_avg = 0, mq5_avg = 0, mq6_avg = 0, mq7_avg = 0, mq8_avg = 0, mq9_avg = 0, mq135_avg = 0, humidity_avg = 0, temperature_avg = 0, lux_avg = 0, uvb_avg = 0, pressure_avg = 0, dust_avg = 0, dust1_avg = 0, dust25_avg = 0;	// Minimum stored value for current sample period
 char err[ERR_HEAP_SIZE] = ""; // initialze with \0 for sanity
@@ -84,13 +86,198 @@ SFE_CC3000_Client client = SFE_CC3000_Client(wifi); // Object reference to http 
 //#define      WLAN_SEC_WEP  (1)
 //#define      WLAN_SEC_WPA (2)
 //#define      WLAN_SEC_WPA2  (3)
+DSM501 dsm501(DSM501A_DO_PM1, DSM501A_DO_PM25);
 SI7021 si7021; // Object Referece to si7021 sensor
 Adafruit_BMP085 bmp; // Object Reference to bmp180 sensor
 TSL2561 tsl(TSL2561_ADDR_FLOAT); // Object reference to TSL2561 sensor
+
 void sampleData()
 {
+	if (sampleData_enable) // just making sure, dont wanna go into deep logic to check if it ever happens. it will be very bad if this changes the values while final averaging
+	{
+		count++;
+		
+			float uvb = readUVB(); // Powered by 3V3 LDO
+			sampleIICSensors();
+
+			sampleGasSensors();
+	}
+}
+void sendSampledData() 
+{
+	sendDataWifi(err, mq2_min, mq2_max, (mq2_avg / count), mq3_min, mq3_max, (mq3_avg / count), mq4_min, mq4_max,
+		(mq4_avg / count), mq5_min, mq5_max, (mq5_avg / count), mq6_min, mq6_max, (mq6_avg / count),
+		mq7_min, mq7_max, (mq7_avg / count), mq8_min, mq8_max, (mq8_avg / count),
+		mq9_min, mq9_max, (mq9_avg / count), mq135_min, mq135_max, (mq135_avg / count),
+		temperature_min, temperature_max, (temperature_avg / count),
+		humidity_min, humidity_max, (humidity_avg / count), lux_min, lux_max, (lux_avg / count),
+		uvb_min, uvb_max, (uvb_avg / count), pressure_min, pressure_max, (pressure_avg / count),
+		dust_min, dust_max, (dust_avg / count), dust25_min, dust25_max, (dust25_avg / count),
+		dust1_min, dust1_max, (dust1_avg / count));
+	//reset all variables 
+	count = 0;
+	mq2_min = 1024; mq3_min = 1024; mq4_min = 1024; mq5_min = 1024; mq6_min = 1024; mq7_min = 1024; mq8_min = 1024; mq9_min = 1024; mq135_min = 1024; humidity_min = 1024; temperature_min = 1024; lux_min = 1024; uvb_min = 1024; pressure_min = 1024; dust_min = 1024; dust1_min = 1024; dust25_min = 1024;	
+	mq2_max = 0; mq3_max = 0; mq4_max = 0; mq5_max = 0; mq6_max = 0; mq7_max = 0; mq8_max = 0; mq9_max = 0; mq135_max = 0; humidity_max = 0; temperature_max = 0; lux_max = 0; uvb_max = 0; pressure_max = 0; dust_max = 0; dust1_max = 0; dust25_max = 0;
+	mq2_avg = 0; mq3_avg = 0; mq4_avg = 0; mq5_avg = 0; mq6_avg = 0; mq7_avg = 0; mq8_avg = 0; mq9_avg = 0; mq135_avg = 0; humidity_avg = 0; temperature_avg = 0; lux_avg = 0; uvb_avg = 0; pressure_avg = 0; dust_avg = 0; dust1_avg = 0; dust25_avg = 0;	
 
 }
+void sampleDustSensors()
+{
+	float dust = readDust(), dust1 = readDust1(), dust25 = readDust25();
+	if (dust > dust_max)
+	{
+		dust_max = dust;
+	}
+	if (dust < dust_min)
+	{
+		dust_min = dust;
+	}
+	if (dust1 > dust1_max)
+	{
+		dust1_max = dust1;
+	}
+	if (dust1 < dust1_min)
+	{
+		dust1_min = dust1;
+	}
+	if (dust25 > dust25_max)
+	{
+		dust25_max = dust25;
+	}
+	if (dust25 < dust25_min)
+	{
+		dust25_min = dust25;
+	}
+
+}
+//Samples I2C sensors
+//To be called from another function only
+void sampleIICSensors()
+{
+	float temperature = readTemperature(), pressure = readPressure(), humidity = readHumidity(), lux = readLux();
+	if (temperature > temperature_max)
+	{
+		temperature_max = temperature;
+	}
+	if (temperature < temperature_min)
+	{
+		temperature_min = temperature;
+	}
+	if (humidity > humidity_max)
+	{
+		humidity_max = humidity;
+	}
+	if (humidity < humidity_min)
+	{
+		humidity_min = humidity;
+	}
+	if (pressure > pressure_max)
+	{
+		pressure_max = pressure;
+	}
+	if (pressure < pressure_min)
+	{
+		pressure_min = pressure;
+	}
+	if (lux > lux_max)
+	{
+		lux_max = lux;
+	}
+	if (lux < lux_min)
+	{
+		lux_min = lux;
+	}
+	temperature_avg += temperature; pressure_avg += pressure;
+	humidity_avg += humidity; lux_avg += lux;
+}
+//Samples the analog data for the gas sensors.
+//To be called from another function only
+void sampleGasSensors()
+{
+	//They are powered by a Switch mode power supply, therefore need avergaign to reduce noise spikes
+	float mq2 = averageAnalogRead(MQ2_AO), mq3 = averageAnalogRead(MQ3_AO), mq4 = averageAnalogRead(MQ4_AO), mq5 = averageAnalogRead(MQ6_AO), mq6 = averageAnalogRead(MQ6_AO),
+		mq7 = averageAnalogRead(MQ7_AO), mq8 = averageAnalogRead(MQ8_AO), mq9 = averageAnalogRead(MQ9_AO), mq135 = averageAnalogRead(MQ135_AO);
+
+	if (mq2 > mq2_max)
+	{
+		mq2_max = mq2;
+	}
+	if (mq2 < mq2_min)
+	{
+		mq2 = mq2_min;
+	}
+	if (mq3 > mq3_max)
+	{
+		mq3_max = mq3;
+	}
+	if (mq3 < mq3_min)
+	{
+		mq3_min = mq3;
+	}
+	if (mq4 > mq4_max)
+	{
+		mq4_max = mq4;
+	}
+	if (mq4 < mq4_min)
+	{
+		mq4_min = mq4;
+	}
+	if (mq5 > mq5_max)
+	{
+		mq5_max = mq5;
+	}
+	if (mq5 < mq5_min)
+	{
+		mq5_min = mq5;
+	}
+	if (mq6 > mq6_max)
+	{
+		mq6_max = mq6;
+	}
+	if (mq6 < mq6_min)
+	{
+		mq6_min = mq6;
+	}
+	if (mq7 > mq7_max)
+	{
+		mq7_max = mq7;
+	}
+	if (mq7 < mq7_min)
+	{
+		mq7_min = mq7;
+	}
+	if (mq8 > mq8_max)
+	{
+		mq8_max = mq8;
+	}
+	if (mq8 < mq8_min)
+	{
+		mq8_min = mq8;
+	}
+	if (mq9 > mq9_max)
+	{
+		mq9_max = mq9;
+	}
+	if (mq9 < mq9_min)
+	{
+		mq9_min = mq9;
+	}
+	if (mq135 > mq135_max)
+	{
+		mq135_max = mq135;
+	}
+	if (mq135 < mq135_min)
+	{
+		mq135_min = mq135;
+	}
+	mq2_avg += mq2; mq3_avg += mq3;
+	mq4_avg += mq4; mq5_avg += mq5;
+	mq6_avg += mq6; mq7_avg += mq7;
+	mq8_avg += mq8; mq9_avg += mq9;
+	mq135_avg += mq135;
+
+}
+
 //Queries SI7021 and returns the temperature in °C (degrees Celsius)
 float readTemperature()
 {
@@ -115,20 +302,37 @@ float readLux()
 //returns the value in mW/cm^2
 float readUVB()
 {
-	//TODO : read ml8511
+	float uvLevel = averageAnalogRead(ML8511_AO);
+	float refLevel = averageAnalogRead(SENSE_3V3);
+	float outputVoltage = 3.3 / refLevel * uvLevel;
+	float uvIntensity = mapfloat(outputVoltage, 0.99, 2.8, 0.0, 15.0);
+}
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 //Reads dust value from Sharp Dust Sensor in//  TODO : unit
 float readDust()
 {
-
+	return SharpDust.measure();
 }
 float readDust1()
 {
-
+	return dsm501.getParticleWeight(0);
 }
 float readDust25()
 {
+	return dsm501.getParticleWeight(1);
+}float averageAnalogRead(int pinToRead)
+{
+	byte numberOfReadings = 8;
+	 float runningValue = 0;
 
+	for (int x = 0; x < numberOfReadings; x++)
+		runningValue += analogRead(pinToRead);
+	runningValue /= numberOfReadings;
+
+	return(runningValue);
 }
 //Initializes CC3000 and returns false if it fails to initialize or connect to the stored wifi credentials
 boolean initWifi()
@@ -260,9 +464,9 @@ char *readEEPROMString(int baseAddress, int stringNumber)
 // Make sure to call the function using a mills timer
 boolean sendDataUSB()
 {
-	if (USBData && !dataUSB_send)
+	if (USBData && !dataUSB_send && !dataBT_send && !dataWifi_send)
 	{
-		sendDataUSB(err,mq2_min,mq2_max,analogRead(MQ2_AO),mq3_min,mq3_max,analogRead(MQ3_AO),mq4_min,mq4_max, analogRead(MQ4_AO),mq5_min,mq5_max, analogRead(MQ5_AO),mq6_min,mq6_max,analogRead(MQ6_AO),mq7_min,mq7_max, analogRead(MQ7_AO),mq8_min,mq8_max,analogRead(MQ8_AO),mq9_min,mq9_max,analogRead(MQ9_AO), mq135_min,mq135_avg, analogRead(MQ135_AO),temperature_min,temperature_max,readTemperature(),humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
+		sendDataUSB(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
 	}
 }
 //Wrapper overload method for preserving sanity
@@ -271,7 +475,7 @@ boolean sendDataUSB()
 // Make sure to call the function using a mills timer
 boolean sendDataBT()
 {
-	if (BTData && !dataBT_send)
+	if (BTData && !dataUSB_send && !dataBT_send && !dataWifi_send)
 	{
 		sendDataBT(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
 	}
@@ -350,9 +554,8 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 	float _mq135_min, float _mq135_max, float _mq135_avg, float _temperature_min, float _temperature_max, float _temperature_avg, float _humidity_min, float _humidity_max, float _humidity_avg, float _lux_min, float _lux_max, float _lux_avg,
 	float _uvb_min, float _uvb_max, float _uvb_avg, float _pressure_min, float _pressure_max, float _pressure_avg, float _dust_min, float _dust_avg, float _dust_max, float _dust25_min, float _dust25_avg, float _dust25_max, float _dust1_min, float _dust1_avg, float _dust1_max)
 {
-	//if(data
 	dataWifi_send = true;
-	StaticJsonBuffer<1536> jsonBuffer; 
+	StaticJsonBuffer<1536> jsonBuffer;
 	JsonObject& outputObject = jsonBuffer.createObject();
 	outputObject["mq2_min"] = _mq2_min; outputObject["mq2_avg"] = _mq2_avg; outputObject["mq2_max"] = _mq2_max; outputObject["mq3_min"] = _mq3_min; outputObject["mq3_avg"] = _mq3_avg; outputObject["mq3_max"] = _mq3_max;
 	outputObject["mq4_min"] = _mq4_min; outputObject["mq4_avg"] = _mq4_avg; outputObject["mq4_max"] = _mq4_max; outputObject["mq5_min"] = _mq5_min; outputObject["mq5_avg"] = _mq5_avg; outputObject["mq5_max"] = _mq5_max;
@@ -395,9 +598,7 @@ void setup()
 	nextEEPROMaddress = START_ADDRESS;
 	Serial.begin(BAUD_USB);
 	Serial1.begin(BAUD_BLUETOOTH); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
-	pinMode(SHARP_LED, OUTPUT);
-	pinMode(DSM501A_DO_PM1, INPUT);
-	pinMode(DSM501A_DO_PM25, INPUT);
+	SharpDust.begin(SHARP_LED, SHARP_AO);
 	initWifi();
 	//initI2C(); // initialize I2C sensors
   //sendDataWifi("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
@@ -405,6 +606,15 @@ void setup()
 //Loops forever. Checks for any incoming serial data and the time to stop sampling and send the data using other functions.
 void loop()
 {
+
+	if (millis() - lastMillis_data > 300000)
+	{
+		sendSampledData();
+	}
+	else if (millis() - lastMillis_sample > 500)
+	{
+		sampleData();
+	}
 	if (Serial.available() > 1)
 	{
 		SerialEvent();

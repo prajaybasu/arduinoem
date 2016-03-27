@@ -38,7 +38,7 @@
             <PivotItem Header="Serial">
                 <ScrollViewer  Height="450" VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Hidden">
                     <RelativePanel>
-                        <StackPanel Grid.Row="2" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" Margin="10,0,10,10" Width="400" Height="80" Name="devicePanelUSB">
+                        <StackPanel Grid.Row="2" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" Margin="10,0,10,10" Width="400" Height="80" Name="devicePanel">
                             <ListBox x:Name="ConnectDevices" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Visible" ItemsSource="{Binding Source={StaticResource DeviceListSource}}" Width="400" Height="80" Background="Gray">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
