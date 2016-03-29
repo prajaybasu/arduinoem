@@ -30,6 +30,7 @@ using Windows.Devices.SerialCommunication;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Text;
+using Newtonsoft.Json.Linq;
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
 namespace ArduinoEMClient
@@ -59,13 +60,16 @@ namespace ArduinoEMClient
         {
             try
             {
-                string aqs = SerialDevice.GetDeviceSelectorFromUsbVidPid(0x2341, 0x0042);
+                string aqs = SerialDevice.GetDeviceSelector();// FromUsbVidPid(0x2341, 0x0042);
+                
+                // string aqs = SerialDevice.GetDeviceSelectorFromUsbVidPid(0x2341, 0x0042);
                 var dis = await DeviceInformation.FindAllAsync(aqs);
 
                 nameConnected.Text = "Select a device and connect";
 
                 for (int i = 0; i < dis.Count; i++)
                 {
+                    if(dis[i].Id.Contains("BTH") || dis[i].Id.Contains("2341"))
                     listOfDevices.Add(dis[i]);
                 }
 
@@ -80,14 +84,22 @@ namespace ArduinoEMClient
         }
         private async void navPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if(serialPort != null)
+            {
+                CancelReadTask();
+                CloseDevice();
+            }
             if(navPivot.SelectedIndex == 0) // USB Bluetooth
             {
-                ButtonRefresh.IsEnabled = false;
-                ButtonCancel.IsEnabled = true;
+                nameConnected.Visibility = Visibility.Visible;
+                //dataRequestState.IsEnabled = false;
+                ButtonRefresh.IsEnabled = true;
+                ButtonCancel.IsEnabled = false;
                 ButtonConnect.IsEnabled = true;
             }
             else if(navPivot.SelectedIndex == 1)// Azure
             {
+                nameConnected.Visibility = Visibility.Collapsed;
                 ButtonRefresh.IsEnabled = true;
                 ButtonConnect.IsEnabled = false;
                 ButtonCancel.IsEnabled = false;
@@ -95,23 +107,32 @@ namespace ArduinoEMClient
                 await RefreshWeatherDataItems();
             }
         }
-
-        private async void Connect_clicked(object sender, RoutedEventArgs e)
+        private async void DataReceiveToggle(object sender, RoutedEventArgs e)
         {
-            if(DeviceType.SelectedIndex == 0) // USB
+            if(/*dataRequestState.IsOn && */serialPort != null)
             {
-               USBSerial_ConnectClicked();
+                dataWriteObject = new DataWriter(serialPort.OutputStream);
+                JObject dataRequest = new JObject(new JProperty("cmd", 0),new JProperty("data",1));
+                dataWriteObject.WriteString(dataRequest.ToString(Formatting.None));
+                if (dataWriteObject != null)
+                {
+                    dataWriteObject.DetachStream();
+                    dataWriteObject = null;
+                }
             }
-            else
+            else if (/*!dataRequestState.IsOn && */serialPort != null)
             {
-                BTSerial_ConnectClicked();
+                dataWriteObject = new DataWriter(serialPort.OutputStream);
+                JObject dataRequest = new JObject(new JProperty("cmd", 0), new JProperty("data", 0));
+                dataWriteObject.WriteString(dataRequest.ToString(Formatting.None));
+                if (dataWriteObject != null)
+                {
+                    dataWriteObject.DetachStream();
+                    dataWriteObject = null;
+                }
             }
         }
-        private async void BTSerial_ConnectClicked()
-        {
-
-        }
-        private async void USBSerial_ConnectClicked()
+        private async void ConnectClicked(object sender, RoutedEventArgs e)
         {
             var selection = ConnectDevices.SelectedItems;
 
@@ -124,11 +145,12 @@ namespace ArduinoEMClient
             DeviceInformation entry = (DeviceInformation)selection[0];
 
             try
-            {
-                serialPort = await SerialDevice.FromIdAsync(entry.Id);
 
+            {
+                 serialPort = await SerialDevice.FromIdAsync(entry.Id);
                 // Disable the 'Connect' button 
-                //comPortInput.IsEnabled = false;
+                ButtonCancel.IsEnabled = true;
+                ButtonConnect.IsEnabled = false;
                 ConnectDevices.IsEnabled = true;
                 // Configure serial settings
                 serialPort.WriteTimeout = TimeSpan.FromMilliseconds(1000);
@@ -150,8 +172,8 @@ namespace ArduinoEMClient
                 ReadCancellationTokenSource = new CancellationTokenSource();
 
                 // Enable 'WRITE' button to allow sending data
-            //    sendTextButton.IsEnabled = true;
-
+                //    sendTextButton.IsEnabled = true;
+                //dataRequestState.IsEnabled = true;
                 Listen();
             }
             catch (Exception ex)
@@ -229,7 +251,8 @@ namespace ArduinoEMClient
               //  Debug.WriteLine();//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
                 StringReader sr = new StringReader(Encoding.ASCII.GetString(BitConverter.GetBytes(bytesRead)));
                 Debug.WriteLine(sr.ReadLine());
-                updateLiveData(sr.ReadLine());//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
+               // nameConnected.Text = sr.ReadLine();
+               // updateLiveData(sr.ReadLine());//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
                // status.Text = "bytes read successfully!";
             }
         }
@@ -239,9 +262,9 @@ namespace ArduinoEMClient
            // Debug.WriteLine(json);
            WeatherDataItem LiveData = jsonToObject(json);
          //  nameConnected.Text = json;
-           avgTemperature.Text = "Average Temperature : " + LiveData.temperature_avg;
-           minTemperature.Text = "Minimun Temperature until cloud data upload : " + LiveData.temperature_min;
-           maxHumidity.Text = "Max Humidity until cloud data upload : " + LiveData.humidity_max;
+           //avgTemperature.Text = "Average Temperature : " + LiveData.temperature_avg;
+           //minTemperature.Text = "Minimun Temperature until cloud data upload : " + LiveData.temperature_min;
+           //maxHumidity.Text = "Max Humidity until cloud data upload : " + LiveData.humidity_max;
         }
          WeatherDataItem jsonToObject(string json)
         {
@@ -271,8 +294,9 @@ namespace ArduinoEMClient
                 serialPort.Dispose();
             }
             serialPort = null;
-
-            //comPortInput.IsEnabled = true;
+            //dataRequestState.IsEnabled = false;
+            ButtonConnect.IsEnabled = true;
+            ButtonCancel.IsEnabled = false;
             //sendTextButton.IsEnabled = false;
             //rcvdText.Text = "";
             if (listOfDevices != null)
@@ -281,15 +305,7 @@ namespace ArduinoEMClient
             }
         }
       
-        private async Task InsertWeatherDataItem(WeatherDataItem weatherDataItem)
-        {
-            // This code inserts a new WeatherDataItem into the database. When the operation completes
-            // and Mobile App backend has assigned an Id, the item is added to the CollectionView.
-            await weatherTable.InsertAsync(weatherDataItem);
-            data.Add(weatherDataItem);
 
-            await SyncAsync(); // offline sync
-        }
         private void CancelReadTask()
         {
             if (ReadCancellationTokenSource != null)
@@ -314,6 +330,15 @@ namespace ArduinoEMClient
                 nameConnected.Text = ex.Message;
             }
         }
+        private async Task InsertWeatherDataItem(WeatherDataItem weatherDataItem)
+        {
+            // This code inserts a new WeatherDataItem into the database. When the operation completes
+            // and Mobile App backend has assigned an Id, the item is added to the CollectionView.
+            await weatherTable.InsertAsync(weatherDataItem);
+            data.Add(weatherDataItem);
+
+            await SyncAsync(); // offline sync
+        }
         private async Task RefreshWeatherDataItems()
         {
             MobileServiceInvalidOperationException exception = null;
@@ -337,9 +362,17 @@ namespace ArduinoEMClient
         private async void ButtonRefresh_Click(object sender, RoutedEventArgs e)
         {
             ButtonRefresh.IsEnabled = false;
-            await SyncAsync(); // offline sync
-            await RefreshWeatherDataItems();
-            ButtonRefresh.IsEnabled = true;
+            if (navPivot.SelectedIndex == 0) // USB
+            {
+                ListAvailablePorts();
+                ButtonRefresh.IsEnabled = true;
+            }
+            else
+            {
+                await SyncAsync(); // offline sync
+                await RefreshWeatherDataItems();
+                ButtonRefresh.IsEnabled = true;
+            }
         }
 
 

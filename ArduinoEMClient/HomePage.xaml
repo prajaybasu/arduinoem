@@ -11,8 +11,8 @@
         <CollectionViewSource x:Name="DeviceListSource"/>
     </Page.Resources>
     <StackPanel>
-        <RelativePanel MinHeight="90">
-         <TextBlock Name="headerText" Text="ArduinoEMClient" Style="{StaticResource TitleTextBlockStyle}" Margin="12,0,0,0"/>
+        <RelativePanel >
+            <TextBlock Name="headerText" Text="ArduinoEMClient" Style="{StaticResource TitleTextBlockStyle}" Margin="12,0,0,0"/>
             <Button Click="ButtonRefresh_Click" x:Name="ButtonRefresh" RelativePanel.AlignVerticalCenterWith="headerText" Margin="10,5,0,0" RelativePanel.RightOf="headerText">
                 <Button.Content>
                     <SymbolIcon Symbol="Refresh"/>
@@ -23,23 +23,19 @@
                     <SymbolIcon Symbol="Cancel"/>
                 </Button.Content>
             </Button>
-            <Button Click="Connect_clicked" x:Name="ButtonConnect" RelativePanel.AlignVerticalCenterWith="headerText" Margin="10,5,0,0" RelativePanel.RightOf="ButtonCancel">
+            <Button Click="ConnectClicked" x:Name="ButtonConnect" RelativePanel.AlignVerticalCenterWith="headerText" Margin="10,5,0,0" RelativePanel.RightOf="ButtonCancel">
                 <Button.Content>
                     <SymbolIcon Symbol="Accept"/>
                 </Button.Content>
             </Button>
-            <ComboBox BorderBrush="Black" SelectedIndex="0" Name="DeviceType" RelativePanel.AlignVerticalCenterWith="headerText" Margin="10,5,0,0" MaxWidth="130" RelativePanel.RightOf="ButtonConnect">
-                <ComboBoxItem Name="USB" Content="USB" />
-                <ComboBoxItem Name="Bluetooth" Content="Bluetooth"/>
-            </ComboBox>
-            <TextBlock RelativePanel.AlignLeftWithPanel="True" Margin="10,5,0,5" RelativePanel.Below="headerText" Name="nameConnected" Text="Not Connected" HorizontalAlignment="Stretch"/>
+            <TextBlock RelativePanel.AlignRightWithPanel="True" Margin="10,5,0,0" RelativePanel.RightOf="ButtonConnect" Name="nameConnected" Text="Not Connected" HorizontalAlignment="Left"/>
         </RelativePanel>
         <Pivot SelectionChanged="navPivot_SelectionChanged" Name="navPivot" Grid.Row="1">
             <PivotItem Header="Serial">
                 <ScrollViewer  Height="450" VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Hidden">
                     <RelativePanel>
-                        <StackPanel Grid.Row="2" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" Margin="10,0,10,10" Width="400" Height="80" Name="devicePanel">
-                            <ListBox x:Name="ConnectDevices" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Visible" ItemsSource="{Binding Source={StaticResource DeviceListSource}}" Width="400" Height="80" Background="Gray">
+                        <StackPanel Grid.Row="2" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" Margin="10,0,10,10" Width="auto" Height="80" Name="devicePanel">
+                            <ListBox x:Name="ConnectDevices" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Visible" ItemsSource="{Binding Source={StaticResource DeviceListSource}}" Width="500*" Height="80" Background="Gray">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Id}" />
@@ -47,22 +43,31 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </StackPanel>
-                        <TextBlock Margin="10"  Name="avgTemperature" Text="Avg. Temperature" RelativePanel.Below="devicePanelUSB"/>
-                        <TextBlock Margin="10" Name="minTemperature" Text="Min. Temperature" RelativePanel.Below="avgTemperature"/>
-                        <TextBlock Margin="10" Name="maxTemperature" Text="Max. Temperature" RelativePanel.Below="minTemperature"/>
-                        <TextBlock Margin="10"  Name="avgPressure" Text="Avg. Pressure" RelativePanel.Below="maxTemperature"/>
-                        <TextBlock Margin="10" Name="minPressure" Text="Min. Pressure" RelativePanel.Below="avgPressure"/>
-                        <TextBlock Margin="10" Name="maxPressure" Text="Max. Pressure" RelativePanel.Below="minPressure"/>
-                        <TextBlock Margin="10"  Name="avgHumidity" Text="Avg. Humidity" RelativePanel.Below="maxPressure"/>
-                        <TextBlock Margin="10" Name="minHumidity" Text="Min. Humidity" RelativePanel.Below="avgHumidity"/>
-                        <TextBlock Margin="10" Name="maxHumidity" Text="Max. Humidity" RelativePanel.Below="minHumidity"/>
+                        <TextBox Background="White" Header="WiFi network SSID" Name="ssidTextBox" Margin="10" MaxLength="32" RelativePanel.Below="devicePanel"/>
+                        <PasswordBox Background="White" Header="WiFi network password"  Name="passwordBox" MaxLength="63" Margin="10" RelativePanel.Below="ssidTextBox"/>
+                        <ComboBox Name="securityComboBox" Margin="10" RelativePanel.Below="passwordBox">
+                            <ComboBoxItem Content="No Security"/>
+                            <ComboBoxItem Content="WEP"/>
+                            <ComboBoxItem Content="WPA"/>
+                            <ComboBoxItem Content="WPA2"/>
+                        </ComboBox>
                     </RelativePanel>
                 </ScrollViewer>
             </PivotItem>
             <PivotItem Header="Azure">
-                <TextBlock Margin="10" Text="TODO"/>
+                <RelativePanel>
+                <TextBlock Margin="10"  Name="avgTemperature" Text="Avg. Temperature"/>
+                <TextBlock Margin="10" Name="minTemperature" Text="Min. Temperature" RelativePanel.Below="avgTemperature"/>
+                <TextBlock Margin="10" Name="maxTemperature" Text="Max. Temperature" RelativePanel.Below="minTemperature"/>
+                <TextBlock Margin="10"  Name="avgPressure" Text="Avg. Pressure" RelativePanel.Below="maxTemperature"/>
+                <TextBlock Margin="10" Name="minPressure" Text="Min. Pressure" RelativePanel.Below="avgPressure"/>
+                <TextBlock Margin="10" Name="maxPressure" Text="Max. Pressure" RelativePanel.Below="minPressure"/>
+                <TextBlock Margin="10"  Name="avgHumidity" Text="Avg. Humidity" RelativePanel.Below="maxPressure"/>
+                <TextBlock Margin="10" Name="minHumidity" Text="Min. Humidity" RelativePanel.Below="avgHumidity"/>
+                <TextBlock Margin="10" Name="maxHumidity" Text="Max. Humidity" RelativePanel.Below="minHumidity"/>
+                </RelativePanel>
             </PivotItem>
-                </Pivot>
-                <!-- TODO - This is the main starting UI for your app -->
+        </Pivot>
+        <!-- TODO - This is the main starting UI for your app -->
     </StackPanel>
 </Page>
