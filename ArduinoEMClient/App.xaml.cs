@@ -47,13 +47,7 @@ namespace ArduinoEMClient
             this.RequestedTheme = LoadApplicationTheme();
             this.Suspending += OnSuspending;
         }
-        public static bool IsMobile
-        {
-            get
-            {
-                return (Windows.System.Profile.AnalyticsInfo.VersionInfo.DeviceFamily == "Windows.Mobile");
-            }
-        }
+
         private ApplicationTheme LoadApplicationTheme()
         {
             try
