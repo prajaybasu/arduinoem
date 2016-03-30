@@ -116,7 +116,7 @@ void sendSampledData()
 		uvb_min, uvb_max, (uvb_avg / count), pressure_min, pressure_max, (pressure_avg / count),
 		dust_min, dust_max, (dust_avg / count), dust25_min, dust25_max, (dust25_avg / dsmCount),
 		dust1_min, dust1_max, (dust1_avg / dsmCount));
-	delay(500);
+	delay(75);
 	//reset all variables 
 	count = 0;
 	mq2_min = 1024; mq3_min = 1024; mq4_min = 1024; mq5_min = 1024; mq6_min = 1024; mq7_min = 1024; mq8_min = 1024; mq9_min = 1024; mq135_min = 1024; humidity_min = 1024; temperature_min = 1024; lux_min = 1024; uvb_min = 1024; pressure_min = 1024; dust_min = 1024; dust1_min = 1024; dust25_min = 1024;
@@ -607,6 +607,8 @@ boolean sendDataWifi(char _err[], float _mq2_min, float _mq2_max, float _mq2_avg
 //Initializes all other electronices
 void setup()
 {
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, HIGH);
 	nextEEPROMaddress = START_ADDRESS;
 	Serial.begin(115200);
 	Serial1.begin(115200); // Apparently COM ports on windows only support upto 128000 baud ? and 115200 is the nearest to it which is supported by every module
@@ -622,6 +624,12 @@ void setup()
 	//Serial.println("Initialize CC3000");
 	initI2C(); // initialize I2C sensors
 	//Serial.println("Initialize IIC");
+	digitalWrite(LED_BUILTIN, LOW);
+	delay(300);
+	digitalWrite(LED_BUILTIN, HIGH);
+	delay(300);
+	digitalWrite(LED_BUILTIN, LOW);
+	//Serial.println("Initialize IIC");
  // sendDataWifi("No Error" ,random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000),random(1,1000));
 
 }
@@ -633,6 +641,7 @@ int freeRam() {
 }
 void loop()
 {
+	digitalWrite(LED_BUILTIN, HIGH);
 	if (millis() - lastMillis_data > 300000 && count != 0)
 	{
 		sendSampledData();
@@ -660,12 +669,13 @@ void loop()
 	{
 		BTData = false;
 	}
-	if (millis() - lastMillis_send > 500)
+	if (millis() - lastMillis_send > 500 && mq2_min != 1024)
 	{
 		sendDataUSB();
 		sendDataBT();
 		lastMillis_send = lastMillis_send;
 	}
+	digitalWrite(LED_BUILTIN, LOW);
 	//Serial.println("Exit loop");
 }
 

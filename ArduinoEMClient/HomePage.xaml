@@ -43,28 +43,57 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </StackPanel>
-                        <TextBox Background="White" Header="WiFi network SSID" Name="ssidTextBox" Margin="10" MaxLength="32" RelativePanel.Below="devicePanel"/>
+                        <Pivot RelativePanel.Below="devicePanel">
+                            <PivotItem Header="Settings">
+                        <RelativePanel >
+                        <TextBox Background="White" Header="WiFi network SSID" Name="ssidTextBox" Margin="10" MaxLength="32"/>
                         <PasswordBox Background="White" Header="WiFi network password"  Name="passwordBox" MaxLength="63" Margin="10" RelativePanel.Below="ssidTextBox"/>
-                        <ComboBox Name="securityComboBox" Margin="10" RelativePanel.Below="passwordBox">
-                            <ComboBoxItem Content="No Security"/>
-                            <ComboBoxItem Content="WEP"/>
-                            <ComboBoxItem Content="WPA"/>
-                            <ComboBoxItem Content="WPA2"/>
-                        </ComboBox>
+                            <ComboBox Header="Network Security Type" Name="securityComboBox" Margin="10" RelativePanel.Below="passwordBox" SelectedIndex="3">
+                                <ComboBoxItem Content="No Security"/>
+                                <ComboBoxItem Content="WEP"/>
+                                <ComboBoxItem Content="WPA"/>
+                                <ComboBoxItem Content="WPA2"/>
+                            </ComboBox>
+                            <Button Click="ButtonSendConfig" Margin="10" Name="sendConfig" Content="Send config to device" RelativePanel.Below="securityComboBox"/>
+                                    <ToggleSwitch Toggled="DataReceiveToggle" Name="dataRequestState"  RelativePanel.Below="sendConfig">
+                                        <ToggleSwitch.OffContent>
+                                            <TextBlock Text="Data Receive Disabled" />
+                                        </ToggleSwitch.OffContent>
+                                        <ToggleSwitch.OnContent>
+                                            <TextBlock Text="Data Receive Enabled" />
+                                        </ToggleSwitch.OnContent>
+                                    </ToggleSwitch>
+                                </RelativePanel>
+                            </PivotItem>
+                            <PivotItem Header="Data">
+                                <RelativePanel>
+                                    <TextBlock Margin="10"  Name="avgTemperature" Text="Avg. Temperature"/>
+                                    <TextBlock Margin="10" Name="minTemperature" Text="Min. Temperature" RelativePanel.Below="avgTemperature"/>
+                                    <TextBlock Margin="10" Name="maxTemperature" Text="Max. Temperature" RelativePanel.Below="minTemperature"/>
+                                    <TextBlock Margin="10"  Name="avgPressure" Text="Avg. Pressure" RelativePanel.Below="maxTemperature"/>
+                                    <TextBlock Margin="10" Name="minPressure" Text="Min. Pressure" RelativePanel.Below="avgPressure"/>
+                                    <TextBlock Margin="10" Name="maxPressure" Text="Max. Pressure" RelativePanel.Below="minPressure"/>
+                                    <TextBlock Margin="10"  Name="avgHumidity" Text="Avg. Humidity" RelativePanel.Below="maxPressure"/>
+                                    <TextBlock Margin="10" Name="minHumidity" Text="Min. Humidity" RelativePanel.Below="avgHumidity"/>
+                                    <TextBlock Margin="10" Name="maxHumidity" Text="Max. Humidity" RelativePanel.Below="minHumidity"/>
+                                </RelativePanel>
+                            </PivotItem>
+                        </Pivot>
                     </RelativePanel>
                 </ScrollViewer>
             </PivotItem>
             <PivotItem Header="Azure">
                 <RelativePanel>
-                <TextBlock Margin="10"  Name="avgTemperature" Text="Avg. Temperature"/>
-                <TextBlock Margin="10" Name="minTemperature" Text="Min. Temperature" RelativePanel.Below="avgTemperature"/>
-                <TextBlock Margin="10" Name="maxTemperature" Text="Max. Temperature" RelativePanel.Below="minTemperature"/>
-                <TextBlock Margin="10"  Name="avgPressure" Text="Avg. Pressure" RelativePanel.Below="maxTemperature"/>
-                <TextBlock Margin="10" Name="minPressure" Text="Min. Pressure" RelativePanel.Below="avgPressure"/>
-                <TextBlock Margin="10" Name="maxPressure" Text="Max. Pressure" RelativePanel.Below="minPressure"/>
-                <TextBlock Margin="10"  Name="avgHumidity" Text="Avg. Humidity" RelativePanel.Below="maxPressure"/>
-                <TextBlock Margin="10" Name="minHumidity" Text="Min. Humidity" RelativePanel.Below="avgHumidity"/>
-                <TextBlock Margin="10" Name="maxHumidity" Text="Max. Humidity" RelativePanel.Below="minHumidity"/>
+                    <TextBlock Margin="10" Name="Azure_lastUpdatedAt" Text="Last Updated At"/>
+                    <TextBlock Margin="10"  Name="Azure_avgTemperature" Text="Avg. Temperature" RelativePanel.Below="Azure_lastUpdatedAt"/>
+                    <TextBlock Margin="10" Name="Azure_minTemperature" Text="Min. Temperature" RelativePanel.Below="Azure_avgTemperature"/>
+                    <TextBlock Margin="10" Name="Azure_maxTemperature" Text="Max. Temperature" RelativePanel.Below="Azure_minTemperature"/>
+                    <TextBlock Margin="10"  Name="Azure_avgPressure" Text="Avg. Pressure" RelativePanel.Below="Azure_maxTemperature"/>
+                    <TextBlock Margin="10" Name="Azure_minPressure" Text="Min. Pressure" RelativePanel.Below="Azure_avgPressure"/>
+                    <TextBlock Margin="10" Name="Azure_maxPressure" Text="Max. Pressure" RelativePanel.Below="Azure_minPressure"/>
+                    <TextBlock Margin="10"  Name="Azure_avgHumidity" Text="Avg. Humidity" RelativePanel.Below="Azure_maxPressure"/>
+                    <TextBlock Margin="10" Name="Azure_minHumidity" Text="Min. Humidity" RelativePanel.Below="Azure_avgHumidity"/>
+                    <TextBlock Margin="10" Name="Azure_maxHumidity" Text="Max. Humidity" RelativePanel.Below="Azure_minHumidity"/>
                 </RelativePanel>
             </PivotItem>
         </Pivot>

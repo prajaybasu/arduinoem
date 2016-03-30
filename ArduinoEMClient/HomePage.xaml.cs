@@ -82,6 +82,24 @@ namespace ArduinoEMClient
                   nameConnected.Text = "HERE :"+ ex.Message;
             }
         }
+        private async void updateWeatherLatest()
+        {
+            List<WeatherDataItem> items = await App.MobileService.GetSyncTable<WeatherDataItem>().OrderByDescending(x => x.createdAt).ToListAsync();
+            updateItemUI(items.First());
+        }
+        private  async void updateItemUI(WeatherDataItem latestData)
+        {
+            Azure_lastUpdatedAt.Text = "Last Updated At : " + latestData.createdAt.ToString();
+            Azure_minHumidity.Text = "Minumum Humidity : " + latestData.humidity_min + " %";
+            Azure_avgHumidity.Text = "Average Humidity : " + latestData.humidity_avg + " %";
+            Azure_maxHumidity.Text = "Maximum Humidity : " + latestData.humidity_max + " %";
+            Azure_maxPressure.Text = "Maximum Pressure : " + latestData.pressure_max / 100 + " hPa";
+            Azure_minPressure.Text = "Minimum Pressure : " + latestData.pressure_min / 100 + " hPa";
+            Azure_avgPressure.Text = "Average Pressure : " + latestData.pressure_avg / 100 + " hPa";
+            Azure_minTemperature.Text = "Minimum Temperature : " + latestData.temperature_min + " °C";
+            Azure_avgTemperature.Text = "Average Temperature : " + latestData.temperature_avg + " °C";
+            Azure_maxTemperature.Text = "Maximum Temperature : " + latestData.temperature_max + " °C";
+        }
         private async void navPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if(serialPort != null)
@@ -131,6 +149,10 @@ namespace ArduinoEMClient
                     dataWriteObject = null;
                 }
             }
+        }
+        private async void ButtonSendConfig(object sender,RoutedEventArgs e)
+        {
+
         }
         private async void ConnectClicked(object sender, RoutedEventArgs e)
         {
@@ -230,27 +252,27 @@ namespace ArduinoEMClient
         }
         private async Task ReadAsync(CancellationToken cancellationToken)
         {
-            Task<UInt32> loadAsyncTask;
-
-            uint ReadBufferLength = 2048;
+            Task<String> loadAsyncTask;
+     //       uint ReadBufferLength = 2048;
 
             // If task cancellation was requested, comply
             cancellationToken.ThrowIfCancellationRequested();
 
+            
             // Set InputStreamOptions to complete the asynchronous read operation when one or more bytes is available
             dataReaderObject.InputStreamOptions = InputStreamOptions.Partial;
-
+            StreamReader sr = new StreamReader(WindowsRuntimeStreamExtensions.AsStreamForRead(serialPort.InputStream));
             // Create a task object to wait for data on the serialPort.InputStream
-            loadAsyncTask = dataReaderObject.LoadAsync(ReadBufferLength).AsTask(cancellationToken);
-
+            loadAsyncTask = sr.ReadLineAsync();
             // Launch the task and wait
-            UInt32 bytesRead = await loadAsyncTask;
-            if (bytesRead > 0 )
+            String serialString = await loadAsyncTask;
+            if (serialString.Length > 0 )
             {
+                nameConnected.Text = serialString;
                 //Debug.WriteLine(dataReaderObject.ReadString(bytesRead));
-              //  Debug.WriteLine();//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
-                StringReader sr = new StringReader(Encoding.ASCII.GetString(BitConverter.GetBytes(bytesRead)));
-                Debug.WriteLine(sr.ReadLine());
+                //  Debug.WriteLine();//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
+                updateLiveData(serialString);
+                Debug.WriteLine(serialString);
                // nameConnected.Text = sr.ReadLine();
                // updateLiveData(sr.ReadLine());//.Substring(dataReaderObject.ReadString(bytesRead).IndexOf('\0')+1));
                // status.Text = "bytes read successfully!";
@@ -261,7 +283,7 @@ namespace ArduinoEMClient
         {
            // Debug.WriteLine(json);
            WeatherDataItem LiveData = jsonToObject(json);
-         //  nameConnected.Text = json;
+         //nameConnected.Text = json;
            //avgTemperature.Text = "Average Temperature : " + LiveData.temperature_avg;
            //minTemperature.Text = "Minimun Temperature until cloud data upload : " + LiveData.temperature_min;
            //maxHumidity.Text = "Max Humidity until cloud data upload : " + LiveData.humidity_max;
@@ -371,6 +393,7 @@ namespace ArduinoEMClient
             {
                 await SyncAsync(); // offline sync
                 await RefreshWeatherDataItems();
+                updateWeatherLatest();
                 ButtonRefresh.IsEnabled = true;
             }
         }
