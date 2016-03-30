@@ -52,8 +52,16 @@ namespace ArduinoEMClient
         public HomePage()
         {
             this.InitializeComponent();
-            listOfDevices = new ObservableCollection<DeviceInformation>();
-            ListAvailablePorts();
+            if (App.IsMobile)
+            {
+                ButtonConnect.Visibility = Visibility.Collapsed;
+                ButtonCancel.Visibility = Visibility.Collapsed;
+                nameConnected.Visibility = Visibility.Collapsed;
+            }
+            else {
+                listOfDevices = new ObservableCollection<DeviceInformation>();
+                ListAvailablePorts();
+            }
 
         }
         private async void ListAvailablePorts()
@@ -107,7 +115,12 @@ namespace ArduinoEMClient
                 CancelReadTask();
                 CloseDevice();
             }
-            if(navPivot.SelectedIndex == 0) // USB Bluetooth
+            if(App.IsMobile)
+            {
+                navPivot.SelectedIndex = 1;
+                navPivot.IsLocked = true;
+            }
+            if(navPivot.SelectedIndex == 0 && !App.IsMobile) // USB Bluetooth
             {
                 nameConnected.Visibility = Visibility.Visible;
                 //dataRequestState.IsEnabled = false;
