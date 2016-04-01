@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArduinoEMClient.Android", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArduinoEM", "ArduinoEM\ArduinoEM.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.Maker.Serial", "..\..\..\..\Downloads\serial-wiring-master\serial-wiring-master\Microsoft.Maker.Serial.win10\Microsoft.Maker.Serial.vcxproj", "{8376216C-282A-4927-B9EF-C2D545FE0BCA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.Maker.Serial", "serial-wiring\Microsoft.Maker.Serial.win10\Microsoft.Maker.Serial.vcxproj", "{8376216C-282A-4927-B9EF-C2D545FE0BCA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
