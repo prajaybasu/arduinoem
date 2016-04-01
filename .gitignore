@@ -210,3 +210,8 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+*.cd
+ArduinoEM/__vm/Compile.vmps.xml
+ArduinoEM/__vm/Configuration.Release.vmps.xml
+ArduinoEM/__vm/Configuration.Debug.vmps.xml
+ArduinoEM/__vm/Upload.vmps.xml
