@@ -229,6 +229,12 @@
       <Name>Windows Mobile Extensions for the UWP</Name>
     </SDKReference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\Downloads\serial-wiring-master\serial-wiring-master\Microsoft.Maker.Serial.win10\Microsoft.Maker.Serial.vcxproj">
+      <Project>{8376216c-282a-4927-b9ef-c2d545fe0bca}</Project>
+      <Name>Microsoft.Maker.Serial</Name>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>

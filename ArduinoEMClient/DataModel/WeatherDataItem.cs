@@ -16,6 +16,7 @@ namespace ArduinoEMClient.DataModel
         // MQx : raw analog value from Arduino analogRead(),
         // lux : lux (adafruit)
         //ml8511 : mw/cm^2
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string Id { get; set; }
         //TODO : Add vars from table
 

@@ -38,7 +38,7 @@
                             <ListBox x:Name="ConnectDevices" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Visible" ItemsSource="{Binding Source={StaticResource DeviceListSource}}" Width="500*" Height="80" Background="Gray">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Id}" />
+                                        <TextBlock Text="{Binding Name}" />
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>

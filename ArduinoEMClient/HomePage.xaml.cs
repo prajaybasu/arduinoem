@@ -30,6 +30,7 @@ using Windows.Devices.SerialCommunication;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Maker.Serial;
 using Newtonsoft.Json.Linq;
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -44,7 +45,7 @@ namespace ArduinoEMClient
         DataWriter dataWriteObject = null;
         DataReader dataReaderObject = null;
 
-        private ObservableCollection<DeviceInformation> listOfDevices;
+        private DeviceInformationCollection listOfDevices;
         private CancellationTokenSource ReadCancellationTokenSource;
         private MobileServiceCollection<WeatherDataItem,WeatherDataItem> data;
         private IMobileServiceSyncTable<WeatherDataItem> weatherTable = App.MobileService.GetSyncTable<WeatherDataItem>();
@@ -52,7 +53,7 @@ namespace ArduinoEMClient
         public HomePage()
         {
             this.InitializeComponent();
-            listOfDevices = new ObservableCollection<DeviceInformation>();
+          //  listOfDevices = new ObservableCollection<DeviceInformation>();
             ListAvailablePorts();
 
         }
@@ -60,19 +61,11 @@ namespace ArduinoEMClient
         {
             try
             {
-                string aqs = SerialDevice.GetDeviceSelector();// FromUsbVidPid(0x2341, 0x0042);
-                
-                // string aqs = SerialDevice.GetDeviceSelectorFromUsbVidPid(0x2341, 0x0042);
-                var dis = await DeviceInformation.FindAllAsync(aqs);
-
-                nameConnected.Text = "Select a device and connect";
-
-                for (int i = 0; i < dis.Count; i++)
-                {
-                    if(dis[i].Id.Contains("BTH") || dis[i].Id.Contains("2341"))
-                    listOfDevices.Add(dis[i]);
-                }
-
+              //  SerialDevice.GetDeviceSelectorFromUsbVidPid(0x2341, 0x0042);
+                listOfDevices = await UsbSerial.listAvailableDevicesAsync();
+                //listOfDevices = await DeviceInformation.listAvailableDevicesAsync(); // FromUsbVidPid(0x2341, 0x0042);
+            //    listOfDevices = await BluetoothSerial.listAvailableDevicesAsync();
+                    
                 DeviceListSource.Source = listOfDevices;
                 //   comPortInput.IsEnabled = true;
                 ConnectDevices.SelectedIndex = -1;
@@ -87,7 +80,7 @@ namespace ArduinoEMClient
             List<WeatherDataItem> items = await App.MobileService.GetSyncTable<WeatherDataItem>().OrderByDescending(x => x.createdAt).ToListAsync();
             updateItemUI(items.First());
         }
-        private  async void updateItemUI(WeatherDataItem latestData)
+        private void updateItemUI(WeatherDataItem latestData)
         {
             Azure_lastUpdatedAt.Text = "Last Updated At : " + latestData.createdAt.ToString();
             Azure_minHumidity.Text = "Minumum Humidity : " + latestData.humidity_min + " %";
@@ -123,36 +116,41 @@ namespace ArduinoEMClient
                 ButtonCancel.IsEnabled = false;
                 await InitLocalStoreAsync(); // offline sync
                 await RefreshWeatherDataItems();
+                updateWeatherLatest();
             }
         }
-        private async void DataReceiveToggle(object sender, RoutedEventArgs e)
+        private void DataReceiveToggle(object sender, RoutedEventArgs e)
         {
-            if(/*dataRequestState.IsOn && */serialPort != null)
+            if(dataRequestState.IsOn && serialPort != null)
             {
                 dataWriteObject = new DataWriter(serialPort.OutputStream);
                 JObject dataRequest = new JObject(new JProperty("cmd", 0),new JProperty("data",1));
-                dataWriteObject.WriteString(dataRequest.ToString(Formatting.None));
-                if (dataWriteObject != null)
-                {
-                    dataWriteObject.DetachStream();
-                    dataWriteObject = null;
-                }
+                WriteSerial((dataRequest.ToString(Formatting.None)));
             }
-            else if (/*!dataRequestState.IsOn && */serialPort != null)
+            else if (!dataRequestState.IsOn && serialPort != null)
             {
                 dataWriteObject = new DataWriter(serialPort.OutputStream);
                 JObject dataRequest = new JObject(new JProperty("cmd", 0), new JProperty("data", 0));
-                dataWriteObject.WriteString(dataRequest.ToString(Formatting.None));
-                if (dataWriteObject != null)
-                {
-                    dataWriteObject.DetachStream();
-                    dataWriteObject = null;
-                }
+                WriteSerial((dataRequest.ToString(Formatting.None)));
             }
         }
-        private async void ButtonSendConfig(object sender,RoutedEventArgs e)
+        private async void WriteSerial(string data)
         {
-
+            dataWriteObject = new DataWriter(serialPort.OutputStream);
+            dataWriteObject.WriteString(data);
+            dataWriteObject.WriteByte((byte)'\n');
+            await dataWriteObject.StoreAsync();
+            if (dataWriteObject != null)
+            {
+                dataWriteObject.DetachStream();
+                dataWriteObject = null;
+            }
+        }
+        private void ButtonSendConfig(object sender,RoutedEventArgs e)
+        {
+            dataWriteObject = new DataWriter(serialPort.OutputStream);
+            JObject dataRequest = new JObject(new JProperty("cmd", 1),new JProperty("ssid", ssidTextBox.Text), new JProperty("sec", securityComboBox.SelectedIndex),new JProperty("password",passwordBox.Password));
+            WriteSerial((dataRequest.ToString(Formatting.None)));
         }
         private async void ConnectClicked(object sender, RoutedEventArgs e)
         {
@@ -323,7 +321,7 @@ namespace ArduinoEMClient
             //rcvdText.Text = "";
             if (listOfDevices != null)
             {
-                listOfDevices.Clear();
+            //    listOfDevices.Clear()
             }
         }
       

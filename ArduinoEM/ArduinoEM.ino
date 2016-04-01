@@ -140,6 +140,7 @@ void sampleDustSensors()
 	{
 		dust_min = dust;
 	}
+	dust_avg += dust;
 	if (count == 1||count % 5 == 0) // sample dsm every 5 normal samples, since minimum time is 30s, also do it on first sample
 	{
 		dsm501.update();
@@ -167,8 +168,6 @@ void sampleDustSensors()
 			dust25_avg += dust25;
 		}
 	}
-	dust_avg += dust;
-
 }
 //Samples I2C sensors
 //To be called from another function only
@@ -499,7 +498,7 @@ boolean sendDataBT()
 {
 	if (BTData)
 	{
-		sendDataBT(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, readDust25(), dust1_min, dust1_max, readDust1());
+		sendDataBT(err, mq2_min, mq2_max, analogRead(MQ2_AO), mq3_min, mq3_max, analogRead(MQ3_AO), mq4_min, mq4_max, analogRead(MQ4_AO), mq5_min, mq5_max, analogRead(MQ5_AO), mq6_min, mq6_max, analogRead(MQ6_AO), mq7_min, mq7_max, analogRead(MQ7_AO), mq8_min, mq8_max, analogRead(MQ8_AO), mq9_min, mq9_max, analogRead(MQ9_AO), mq135_min, mq135_avg, analogRead(MQ135_AO), temperature_min, temperature_max, readTemperature(), humidity_min, humidity_max, readHumidity(), lux_min, lux_max, readLux(), uvb_min, uvb_max, readUVB(), pressure_min, pressure_max, readPressure(), dust_min, dust_max, readDust(), dust25_min, dust25_max, (dust25_avg/dsmCount), dust1_min, dust1_max, (dust25_avg/dsmCount));
 	}
 }
 //Constructs a json string sends that string over Serial interface, which is connected to TTL-USB converter by default.
@@ -699,8 +698,15 @@ void SerialEvent1()
 		}
 		if (ssid != NULL && sec != NULL && password != NULL)
 		{
+			digitalWrite(LED_BUILTIN, LOW);
 			writeWifiEEPROM((char*)ssid, (char*)password, (char*)sec);
 			connectWifi();
+			digitalWrite(LED_BUILTIN, HIGH);
+			delay(100);
+			digitalWrite(LED_BUILTIN, LOW);
+			delay(100);
+			digitalWrite(LED_BUILTIN, HIGH);
+			digitalWrite(LED_BUILTIN, LOW);
 		}
 	}
 	else if (cmd == 0)
@@ -735,8 +741,15 @@ void SerialEvent()
 		}
 		if (ssid != NULL && sec != NULL && password != NULL)
 		{
+			digitalWrite(LED_BUILTIN, LOW);
 			writeWifiEEPROM((char*)ssid, (char*)password, (char*)sec);
 			connectWifi();
+			digitalWrite(LED_BUILTIN, HIGH);
+			delay(100);
+			digitalWrite(LED_BUILTIN, LOW);
+			delay(100);
+			digitalWrite(LED_BUILTIN, HIGH);
+			digitalWrite(LED_BUILTIN, LOW);
 		}
 	}
 	else if (cmd == 0)
